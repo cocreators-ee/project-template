@@ -1,0 +1,2 @@
+#!/usr/bin/env sh
+poetry run invoke pre-commit

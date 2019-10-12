@@ -1,0 +1,60 @@
+name: Release service-pipeline-agent
+
+variables:
+  azureSubscriptionEndpoint: myproj
+  registry: myproj.azurecr.io
+  repository: myproj-service-pipeline-agent
+  azureResourceGroup: myproj
+  kubernetesCluster: myproj
+  component: service/pipeline-agent
+  azureSubscription: "My Company Subscription (uuid)"
+  projectId: "Azure DevOps project UUID"
+  definition: "<Related *build* pipeline definition ID in Azure DevOps>"
+
+
+trigger:
+  batch: true
+  branches:
+    include:
+      - master
+  paths:
+    include:
+      - azure-devops/release-pipeline-agent.yml
+
+pool:
+  name: "Default"
+
+stages:
+  - stage: deploy_to_shared
+    jobs:
+      - job: Release
+        steps:
+          - script: |
+              env | sort
+            displayName: "Display environment variables"
+          - task: DownloadPipelineArtifact@2
+            inputs:
+              buildType: 'specific'
+              project: '$(projectId)'
+              definition: '$(buildPipelineId)'
+              specificBuildWithTriggering: true
+              buildVersionToDownload: 'latestFromBranch'
+              branchName: 'refs/heads/master'
+              artifactName: build-number
+              targetPath: '$(Pipeline.Workspace)'
+          - task: AzureCLI@1
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                export BUILD_NUMBER=$(cat $(Pipeline.Workspace)/build-number.txt)
+                echo "Releasing build $BUILD_NUMBER"
+                az aks get-credentials --resource-group $(azureResourceGroup) --name $(kubernetesCluster)
+                sh devops/run_task.sh release \
+                  --env=shared \
+                  --keep-configs \
+                  --component $(component) \
+                  --image $(component)=$(registry)/$(repository) \
+                  --tag $(component)=$BUILD_NUMBER \
+                  --no-rollout-wait  # ADD THIS ONLY FOR PIPELINE AGENT UPDATES
+            displayName: "Run release tool"

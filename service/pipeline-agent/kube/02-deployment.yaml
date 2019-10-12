@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pipeline-agent
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pipeline-agent
+  template:
+    metadata:
+      labels:
+        app: pipeline-agent
+    spec:
+      containers:
+        - name: pipeline-agent
+          imagePullPolicy: IfNotPresent
+          image: myproj-service-pipeline-agent:latest
+          env:
+            - name: VSTS_ACCOUNT
+              valueFrom:
+                configMapKeyRef:
+                  name: myproj-pipeline-agent-config
+                  key: VSTS_ACCOUNT
+            - name: VSTS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: myproj-pipeline-agent-secrets
+                  key: VSTS_TOKEN
+          volumeMounts:
+            - mountPath: /var/run/docker.sock
+              name: docker-volume
+      volumes:
+        - name: docker-volume
+          hostPath:
+            path: /var/run/docker.sock

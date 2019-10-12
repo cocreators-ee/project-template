@@ -1,0 +1,60 @@
+name: Build service-pipeline-agent
+
+variables:
+  azureRegistry: myproj
+  containerRegistry: $(azureRegistry).azurecr.io
+  acrConnection: "ACR connection name in Azure DevOps"
+  repository: myproj-service-pipeline-agent
+  component: service/pipeline-agent
+
+trigger:
+  branches:
+    include:
+      - "*"
+  paths:
+    include:
+      - service/pipeline-agent/*
+      - azure-devops/build-service-pipeline-agent.yml
+
+pr:
+  - "*"
+
+pool:
+  name: "Default"
+
+steps:
+  - script: |
+      set -exu
+      BUILD_NUMBER=$(Build.SourceBranchName)-$(git rev-parse --short HEAD)-$(date +%Y%m%d-%H%M%S)
+      echo $BUILD_NUMBER > $(Pipeline.Workspace)/build-number.txt
+      echo "##vso[build.updatebuildnumber]$BUILD_NUMBER"
+    displayName: "Set build name"
+  - script: |
+      env | sort
+    displayName: "Display environment variables"
+  - script: |
+      sh devops/run_task.sh build-images --component $(component)
+    displayName: "Build component"
+  - task: Docker@2
+    inputs:
+      containerRegistry: '$(acrConnection)'
+      command: 'login'
+    displayName: "Login to Azure Container Registry"
+  - script: |
+      TAG=$(containerRegistry)/$(repository):$(Build.BuildNumber)
+      echo "Adding tag $TAG"
+      docker tag $(repository):latest $TAG
+      echo "Pushing $TAG"
+      docker push $TAG
+    displayName: "Tag and push image"
+  - task: AzureCLI@1
+    inputs:
+      azureSubscription: "AZURE SUBSCRIPTION FULL NAME"
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        sh devops/run_task.sh cleanup-docker-repository --registry $(azureRegistry) --repository $(repository)
+    displayName: "Clean up old images"
+  - task: PublishPipelineArtifact@1
+    inputs:
+      targetPath: '$(Pipeline.Workspace)/build-number.txt'
+      artifact: 'build-number'
