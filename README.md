@@ -150,7 +150,7 @@ you might want that script to run something like:
 
 Every developer checking out the repository should first run
 
-```
+```bash
 minikube start [--cpus=4] [--memory=4g] [--disk-size=50g]
 minikube docker-env
 # Follow instructions from output
@@ -159,7 +159,7 @@ poetry run invoke init
 ```
 
 For most projects you should set up `ksync` or similar, or to run
-```
+```bash
 minikube mount .:/src --ip=$(minikube ip)
 ```
 
@@ -170,7 +170,7 @@ To restart from scratch, just run `minikube delete` and start again.
 
 ## Other common commands
 
-```
+```bash
 # Releasing specific version for specific component
 poetry run invoke release <env> \
     --component service/pipeline-agent \
@@ -242,7 +242,7 @@ While this is not GPL/LGPL/similar, if you improve on the template,
 especially anything on the TODO, contribution back to the source would
 be appreciated.
 
-You will likely want to delete that file from your own private projects.
+You will likely want to update that file for your own private projects.
 
 ### Build names
 
@@ -253,18 +253,25 @@ names.
 ### Questions & Answers
 
 Q: Why do you not use `ctx.run` for Invoke tasks?
-A: It has been unreliable, especially when you run a large number of
-   small tasks - sometimes just raising `UnexpectedExit` with no exit
-   code or output at all.
+
+A:
+> It has been unreliable, especially when you run a large number of
+> small tasks - sometimes just raising `UnexpectedExit` with no exit
+> code or output at all.
 
 Q: Why do you use Alpine Linux base images?
-A: The minimal distribution makes builds and releases faster, and
-   reduces attack footprint.
+
+A:
+> The minimal distribution makes builds and releases faster, and
+> reduces attack footprint.
 
 Q: Why do you use `/bin/sh` (or `#!/usb/bin/env sh`) instead of BASH?
-A: Compatibility with busybox etc., especially Alpine Linux.
+
+A:
+> Compatibility with busybox etc., especially Alpine Linux.
 
 Q: How to optimize Dockerfile build speeds?
+
 A:
 > First, use `verdaccio` and `devpi` and such caches hosted locally.
 > Secondly, use pipeline caching. Thirdly, make sure you split your
