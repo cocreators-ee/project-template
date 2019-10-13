@@ -116,9 +116,10 @@ after the resources have been restarted.
 In practice when e.g. writing database migrations for your Python API
 you might want that script to run something like:
 
- - https://ollycope.com/software/yoyo/latest/
- - https://github.com/stxnext/pymongo-migrate
- - https://flywaydb.org
+ - [migrate-anything](https://github.com/Lieturd/migrate-anything)
+ - [yoyo-migrate](https://ollycope.com/software/yoyo/latest/)
+ - [flyway](https://flywaydb.org)
+ - [pymongo-migrate](https://github.com/stxnext/pymongo-migrate)
 
 
 ## Taking the template into use
