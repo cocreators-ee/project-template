@@ -1,3 +1,6 @@
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![SonarCloud analysis](https://sonarcloud.io/api/project_badges/measure?project=Lieturd_project-template&metric=alert_status](https://sonarcloud.io/dashboard?id=Lieturd_project-template)
+
 # Lieturd project template
 
 This project template is meant for use by anyone and everyone, it's aim
@@ -122,6 +125,8 @@ you might want that script to run something like:
 
 1. Download the latest release of this repository
 1. Create an Azure DevOps project if you don't have one yet
+1. Maybe remove `.travis.yml` if you don't want Travis-CI integration to
+   [SonarCloud](https://sonarcloud.io/)
 1. Update or remove `LICENSE.md`
 1. Update this file for your needs
 1. Configure [devops/settings.py](devops/settings.py), especially `IMAGE_PREFIX`
