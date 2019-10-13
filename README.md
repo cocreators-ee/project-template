@@ -277,25 +277,25 @@ names.
 
 ### Questions & Answers
 
-Q: Why do you not use `ctx.run` for Invoke tasks?
+**Q: Why do you not use `ctx.run` for Invoke tasks?**
 
 A:
 > It has been unreliable, especially when you run a large number of
 > small tasks - sometimes just raising `UnexpectedExit` with no exit
 > code or output at all.
 
-Q: Why do you use Alpine Linux base images?
+**Q: Why do you use Alpine Linux base images?**
 
 A:
 > The minimal distribution makes builds and releases faster, and
 > reduces attack footprint.
 
-Q: Why do you use `/bin/sh` (or `#!/usb/bin/env sh`) instead of BASH?
+**Q: Why do you use `/bin/sh` (or `#!/usb/bin/env sh`) instead of BASH?**
 
 A:
 > Compatibility with busybox etc., especially Alpine Linux.
 
-Q: How to optimize Dockerfile build speeds?
+**Q: How to optimize Dockerfile build speeds?**
 
 A:
 > First, use `verdaccio` and `devpi` and such caches hosted locally.
