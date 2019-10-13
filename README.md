@@ -312,4 +312,5 @@ Things that could be done better still:
    allowing for more careful control.
  - Azure DevOps: It would be nice to be able to set variables with a
    form, especially things like the tag for release
- - Releases: Examples of real functional database migrations
+ - Releases: Examples of real functional database migrations using
+   [migrate-anything](https://github.com/Lieturd/migrate-anything)
