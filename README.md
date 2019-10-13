@@ -1,5 +1,6 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![SonarCloud analysis](https://sonarcloud.io/api/project_badges/measure?project=Lieturd_project-template&metric=alert_status](https://sonarcloud.io/dashboard?id=Lieturd_project-template)
+
+[![SonarCloud analysis](https://sonarcloud.io/api/project_badges/measure?project=Lieturd_project-template&metric=alert_status)](https://sonarcloud.io/dashboard?id=Lieturd_project-template)
 
 # Lieturd project template
 
