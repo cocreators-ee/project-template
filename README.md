@@ -238,7 +238,25 @@ However this also means that the secrets stored for `minikube` are *NOT
 SECURE*. Do not put any real secrets in them without being fully aware
 of the consequences.
 
-For all other environments you are expected to store `
+For all other environments you are expected to store the `secrets.pem`
+for each environment in the repository, and the sealed secrets in
+encrypted form in `envs/<env>/secrets/*.yaml`.
+
+For example:
+
+```bash
+# Create a secret, output as yaml to a file and don't run on server
+kubectl create secret my-secret \
+    -o yaml \
+    --dry-run \
+    --from-literal=foo=bar > my-secret.yaml
+kubeseal --cert envs/<env>/secrets.pem < my-secret.yaml > envs/<env>/secrets/01-my-secret.yaml
+```
+
+You might also want to back-up your master key, but do NOT store it in
+the repository - put it safely away in e.g. your password manager's
+secure notes -section.
+
 
 ### License
 
