@@ -69,7 +69,7 @@ def list_envs() -> List[str]:
 
 
 def run(
-    args, cwd=None, check=True, env=None, stream=False
+    args, cwd=None, check=True, env=None, stream=False, timeout=None
 ) -> subprocess.CompletedProcess:
     """
     Run a command
@@ -79,6 +79,7 @@ def run(
     :param bool check:
     :param dict env:
     :param stream bool: If the output should be streamed instead of captured
+    :param float timeout: Seconds to wait before failing
     :raises subprocess.CalledProcessError:
     :raises subprocess.TimeoutExpired:
     :return subprocess.CompletedProcess:
@@ -93,6 +94,9 @@ def run(
     if not stream:
         kwargs["stdout"] = subprocess.PIPE
         kwargs["stderr"] = subprocess.PIPE
+
+    if timeout:
+        kwargs["timeout"] = timeout
 
     try:
         start = time()

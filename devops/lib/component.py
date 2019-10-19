@@ -32,6 +32,9 @@ SKIP_KUBE_KINDS = (
 
 RESTART_RESOURCES = ("Deployment", "DaemonSet", "StatefulSet")
 
+# How long to wait for any rollout to successfully complete before failing
+ROLLOUT_TIMEOUT = 5 * 60.0
+
 
 class Component:
     def __init__(self, path: str):
@@ -190,7 +193,10 @@ class Component:
         run(["kubectl", "-n", self.namespace, "rollout", "restart", resource])
 
         if not no_rollout_wait:
-            run(["kubectl", "-n", self.namespace, "rollout", "status", resource])
+            run(
+                ["kubectl", "-n", self.namespace, "rollout", "status", resource],
+                timeout=ROLLOUT_TIMEOUT,
+            )
 
     def _prepare_configs(self, dst: Path):
         dst = dst / self.path
