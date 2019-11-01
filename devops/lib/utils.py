@@ -1,11 +1,8 @@
 import importlib
 import subprocess
 from pathlib import Path
-from typing import List
 from time import time
-import sys
-
-from invoke import Context
+from typing import List, Optional
 
 from devops.lib.log import logger
 
@@ -18,44 +15,20 @@ class Settings:
     COMPONENTS: List[str]
     KUBE_CONTEXT: str
     KUBE_NAMESPACE: str
-    IMAGE_PULL_SECRETS: dict
-
-
-def get_changed_files(ctx: Context, modified=True, added=True, deleted=False):
-    """
-    Get changed files in working directory
-    :param Context ctx:
-    :param bool modified:
-    :param bool added:
-    :param bool deleted:
-    :return list[str]:
-    """
-    if not (modified or added or deleted):
-        raise NotImplementedError("What do you want to do?")
-
-    opts = "-"
-    if modified:
-        opts += "m"
-    if added:
-        opts += "a"
-    if deleted:
-        opts += "r"
-
-    result = ctx.run(f"hg status {opts}")
-
-    files = [
-        line.split(" ", 1)[1].strip()
-        for line in result.stdout.replace("\r\n", "\n").split("\n")
-        if line != ""
-    ]
-
-    return files
+    IMAGE_PULL_SECRETS: Optional[dict]
+    REPLICAS: Optional[dict]
 
 
 def load_env_settings(env: str) -> Settings:
     module = f"envs.{env}.settings"
     logger.info(f"Loading settings from {module}")
-    return importlib.import_module(module)
+    settings = importlib.import_module(module)
+
+    # Set some defaults for optional values
+    settings.IMAGE_PULL_SECRETS = getattr(settings, "IMAGE_PULL_SECRETS", {})
+    settings.REPLICAS = getattr(settings, "REPLICAS", {})
+
+    return settings
 
 
 def list_envs() -> List[str]:
