@@ -11,6 +11,10 @@ repos:
     hooks:
     - id: black
       language_version: python3.6
+  - repo: https://github.com/timothycrosley/isort
+    rev: master
+    hooks:
+    - id: isort
   - repo: local
     hooks:
       - id: invoke-pre-commit
