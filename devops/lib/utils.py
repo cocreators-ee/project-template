@@ -1,11 +1,8 @@
 import importlib
 import subprocess
 from pathlib import Path
-from typing import List
 from time import time
-import sys
-
-from invoke import Context
+from typing import List
 
 from devops.lib.log import logger
 
@@ -19,37 +16,6 @@ class Settings:
     KUBE_CONTEXT: str
     KUBE_NAMESPACE: str
     IMAGE_PULL_SECRETS: dict
-
-
-def get_changed_files(ctx: Context, modified=True, added=True, deleted=False):
-    """
-    Get changed files in working directory
-    :param Context ctx:
-    :param bool modified:
-    :param bool added:
-    :param bool deleted:
-    :return list[str]:
-    """
-    if not (modified or added or deleted):
-        raise NotImplementedError("What do you want to do?")
-
-    opts = "-"
-    if modified:
-        opts += "m"
-    if added:
-        opts += "a"
-    if deleted:
-        opts += "r"
-
-    result = ctx.run(f"hg status {opts}")
-
-    files = [
-        line.split(" ", 1)[1].strip()
-        for line in result.stdout.replace("\r\n", "\n").split("\n")
-        if line != ""
-    ]
-
-    return files
 
 
 def load_env_settings(env: str) -> Settings:
