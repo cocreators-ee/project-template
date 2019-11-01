@@ -9,13 +9,14 @@ python:
   - "3.6"
 
 install:
-  - pip install \
+  - poetry install
+  - poetry run pip install \
       codecov==2.0.15 \
       pytest==4.6.5
 
 script:
-  - coverage run --include "devops/*" -m pytest
-  - coverage xml -i
+  - poetry run coverage run --include "devops/*" -m pytest
+  - poetry run coverage xml -i
   - mkdir coverage-reports
   - mv coverage.xml coverage-reports/coverage-python.xml
   - sonar-scanner
