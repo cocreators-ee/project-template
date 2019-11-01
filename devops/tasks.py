@@ -92,18 +92,18 @@ def release(
 
     if image:
         for i in image:
-            c, v = i.split("=")
-            images[c] = v
+            path, value = i.split("=")
+            images[path] = value
 
     if tag:
         for t in tag:
-            c, v = t.split("=")
-            tags[c] = v
+            path, value = t.split("=")
+            tags[path] = value
 
     if replicas:
         for r in replicas:
-            c, v = r.split("=")
-            replica_counts[c] = v
+            path, value = r.split("=")
+            replica_counts[path] = value
 
     rel_id = generate_release_id()
     big_label(logger.info, f"Release {rel_id} to {env} environment starting")
@@ -116,8 +116,8 @@ def release(
 
     # Override env settings for replicas
     if replica_counts:
-        for c in replica_counts:
-            settings.REPLICAS[c] = replica_counts[c]
+        for path in replica_counts:
+            settings.REPLICAS[path] = replica_counts[path]
 
     rel_path = RELEASE_TMP / rel_id
 
