@@ -1,9 +1,8 @@
 import importlib
 import subprocess
 from pathlib import Path
-from typing import List
 from time import time
-import sys
+from typing import List, Optional
 
 from invoke import Context
 
@@ -18,7 +17,8 @@ class Settings:
     COMPONENTS: List[str]
     KUBE_CONTEXT: str
     KUBE_NAMESPACE: str
-    IMAGE_PULL_SECRETS: dict
+    IMAGE_PULL_SECRETS: Optional[dict]
+    REPLICAS: Optional[dict]
 
 
 def get_changed_files(ctx: Context, modified=True, added=True, deleted=False):
@@ -55,7 +55,13 @@ def get_changed_files(ctx: Context, modified=True, added=True, deleted=False):
 def load_env_settings(env: str) -> Settings:
     module = f"envs.{env}.settings"
     logger.info(f"Loading settings from {module}")
-    return importlib.import_module(module)
+    settings = importlib.import_module(module)
+
+    # Set some defaults for optional values
+    settings.IMAGE_PULL_SECRETS = getattr(settings, "IMAGE_PULL_SECRETS", {})
+    settings.REPLICAS = getattr(settings, "REPLICAS", {})
+
+    return settings
 
 
 def list_envs() -> List[str]:

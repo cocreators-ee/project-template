@@ -92,18 +92,18 @@ def release(
 
     if image:
         for i in image:
-            k, v = i.split("=")
-            images[k] = v
+            c, v = i.split("=")
+            images[c] = v
 
     if tag:
         for t in tag:
-            k, v = t.split("=")
-            tags[k] = v
+            c, v = t.split("=")
+            tags[c] = v
 
     if replicas:
         for r in replicas:
-            k, v = r.split("=")
-            replica_counts[k] = v
+            c, v = r.split("=")
+            replica_counts[c] = v
 
     rel_id = generate_release_id()
     big_label(logger.info, f"Release {rel_id} to {env} environment starting")
@@ -113,6 +113,11 @@ def release(
         components = component
     else:
         components = settings.COMPONENTS
+
+    # Override env settings for replicas
+    if replica_counts:
+        for c in replica_counts:
+            settings.REPLICAS[c] = replica_counts[c]
 
     rel_path = RELEASE_TMP / rel_id
 
@@ -150,9 +155,10 @@ def release(
         if path in tags:
             component.tag = tags[path]
             del images[tag]
-        if path in replica_counts:
-            component.replicas = replica_counts[path]
-            del replica_counts[path]
+        if path in settings.REPLICAS:
+            component.replicas = settings.REPLICAS[path]
+            if path in replica_counts:
+                del replica_counts[path]
 
         component.image_prefix = IMAGE_PREFIX
         component.namespace = settings.KUBE_NAMESPACE
@@ -165,17 +171,17 @@ def release(
         component.release(ctx, rel_path, dry_run, no_rollout_wait)
 
     if images:
-        logger.error("Unprocessed image configurations: ")
+        logger.error("Unprocessed image configurations:")
         for path in images:
             logger.error(f" - {path}={images[path]}")
 
     if tags:
-        logger.error("Unprocessed tag configurations: ")
+        logger.error("Unprocessed tag configurations:")
         for path in tags:
             logger.error(f" - {path}={tags[path]}")
 
     if replica_counts:
-        logger.error("Unprocessed replica configurations: ")
+        logger.error("Unprocessed replica configurations:")
         for path in replica_counts:
             logger.error(f" - {path}={replica_counts[path]}")
 
