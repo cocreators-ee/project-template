@@ -3,13 +3,13 @@ import random
 from copy import deepcopy
 from pathlib import Path
 from shutil import copy
-from subprocess import run as sp_run
 from typing import List, Optional
 
 import yaml
+from invoke import Context
+
 from devops.lib.log import logger
 from devops.lib.utils import label, run
-from invoke import Context
 
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
@@ -21,7 +21,8 @@ class ValidationError(Exception):
     pass
 
 
-SKIP_KUBE_KINDS = (
+# Kubernetes resource types that do not need to be patched
+SKIP_PATCH_KUBE_KINDS = (
     "ClusterRole",
     "ClusterRoleBinding",
     "Role",
@@ -29,6 +30,7 @@ SKIP_KUBE_KINDS = (
     "ServiceAccount",
 )
 
+# https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#rollout
 RESTART_RESOURCES = ("Deployment", "DaemonSet", "StatefulSet")
 
 # How long to wait for any rollout to successfully complete before failing
@@ -72,7 +74,7 @@ class Component:
 
         for file in self.kube_configs:
             path = self.kube_configs[file]
-            result = sp_run(["kubeval", str(path)])
+            result = run(["kubeval", path])
             if result.returncode > 0:
                 raise ValidationError(f"Validation failed for {path}")
 
@@ -161,7 +163,7 @@ class Component:
         if not pods:
             raise Exception(f"No running pods with correct image found for {resource}")
 
-        pod = random.choice(pods)
+        pod = random.choice(pods)  # nosec
         run(
             [
                 "kubectl",
@@ -252,7 +254,7 @@ class Component:
         for doc in config:
             kind = doc["kind"]
 
-            if kind in SKIP_KUBE_KINDS:
+            if kind in SKIP_PATCH_KUBE_KINDS:
                 logger.info(f"Skipping {kind} patching")
                 continue
 

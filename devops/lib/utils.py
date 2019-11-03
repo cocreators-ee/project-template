@@ -1,5 +1,5 @@
 import importlib
-import subprocess
+import subprocess  # nosec
 from pathlib import Path
 from time import time
 from typing import List, Optional
@@ -73,7 +73,7 @@ def run(
 
     try:
         start = time()
-        res = subprocess.run(args, **kwargs)
+        res = subprocess.run(args, **kwargs)  # nosec
         end = time()
         logger.info(f"  ✔ ... done in {end - start:.3f}s")
 

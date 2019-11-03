@@ -473,8 +473,6 @@ Things that could be done better still:
  - DevOps scripts: Unit tests, probably based on `--dry-run` mode
  - Caches: Add examples of usage of [Verdaccio](https://verdaccio.org)
    and [devpi](https://devpi.net/docs/devpi/devpi/stable/%2Bd/index.html)
- - Releases: Merge YAML overrides instead of replacing the whole file,
-   allowing for more careful control.
  - Azure DevOps: It would be nice to be able to set variables with a
    form, especially things like the tag for release
  - Releases: Examples of real functional database migrations using
