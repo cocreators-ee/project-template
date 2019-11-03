@@ -86,6 +86,8 @@ Naming works as follows:
    rename them manually after creation.
  - Pipeline configs: `(build|release)-<component name>.yml`
 
+For deleting old Kubernetes resources, you can move your `.yaml` file under `kube/obsolete/` and it will be picked up AFTER the release of the `kube/*.yaml` files have been applied and the resources will be deleted.
+
 The `envs` have a few things to keep in mind.
 
 Firstly, every `envs/*` is expected to be run on one Kubernetes cluster
@@ -95,7 +97,8 @@ distribution.
 
 Secondly, you should store the sealed secrets generated with `kubeseal`
 to `envs/<env>/secrets/<num>-<name>.yaml`, e.g. `01-pipeline-agent.yaml`
-and they will be applied during release.
+and they will be applied during release. Similarly the files in
+`envs/<env>/secrets/obsolete/` will have their resources deleted.
 
 Thirdly, if you need to override any component's `kube/` configs, you
 can store an override to `envs/<env>/component/path/kube/<file>.yaml`,
