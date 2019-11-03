@@ -107,6 +107,142 @@ If you want to do purely local settings for `devops` scripts, e.g. to
 change the `LOG_LEVEL`, you can create `devops/settings_local.py` with
 your overrides.
 
+### Yaml merges
+
+In the `envs/<env>/merges/` folder you can put files to merge with your
+existing configs.
+
+E.g. if you want to just override one field, add one setting, or remove
+some specific thing, you don't need to replace the whole file. This will
+help with reducing duplication and thus risking your settings getting
+out of sync.
+
+To remove previously defined properties, set the value as `~`.
+
+To skip items in lists (leave them untouched), just use an empty value as in:
+
+```
+list:
+ - # Skipped
+ - override
+```
+
+If you need to skip a full YAML document on a multi-document file, make
+sure the YAML parser understands that. E.g. to skip the first document
+you will need to do something like:
+
+```yaml
+---
+---
+# Document 2
+spec:
+  value: override
+```
+
+Otherwise it should work pretty much as expected. Any items in original
+file that do not exist in overrides, stay untouched. Any new items are
+added. Any string/number/similar values on both get replaced.
+
+As a specific example, if you have `component/kube/01-example.yaml` and
+`envs/test/merges/component/kube/01-example.yaml` with the contents:
+
+```yaml
+# component/kube/01-example.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: myproj-settings
+data:
+  MY_SETTING: "foo"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-deployment
+spec:
+  selector:
+    matchLabels:
+      app: my-deployment
+  template:
+    metadata:
+      labels:
+        app: my-deployment
+    spec:
+      containers:
+        - name: my-container
+          imagePullPolicy: IfNotPresent
+          image: my-container:latest
+          env:
+            - name: ANOTHER_SETTING
+              value: some-value
+          volumeMounts:
+            - mountPath: /var/run/docker.sock
+              name: docker-volume
+```
+
+and
+
+```yaml
+# envs/test/merges/component/kube/01-example.yaml
+data:
+  MY_SETTING: "bar"
+---
+spec:
+  template:
+    spec:
+      containers:
+        - env:
+            - name: ANOTHER_SETTING # this prop is here just for clarity
+              value: another-value
+          volumeMounts: ~
+          livenessProbe:
+            exec:
+              command:
+               - cat
+               - /tmp/healthy
+            initialDelaySeconds: 5
+            periodSeconds: 5
+```
+
+You will end up afterwards with a processed combination of:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: myproj-settings
+data:
+  MY_SETTING: "bar"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-deployment
+spec:
+  selector:
+    matchLabels:
+      app: my-deployment
+  template:
+    metadata:
+      labels:
+        app: my-deployment
+    spec:
+      containers:
+        - name: my-container
+          imagePullPolicy: IfNotPresent
+          image: my-container:latest
+          env:
+            - name: ANOTHER_SETTING
+              value: another-value
+          livenessProbe:
+            exec:
+              command:
+               - cat
+               - /tmp/healthy
+            initialDelaySeconds: 5
+            periodSeconds: 5
+```
+
 
 ## Post-release actions
 

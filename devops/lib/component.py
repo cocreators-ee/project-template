@@ -1,21 +1,20 @@
 import json
 import random
+from copy import deepcopy
 from pathlib import Path
 from shutil import copy
 from subprocess import run as sp_run
 from typing import List, Optional
 
 import yaml
+from devops.lib.log import logger
+from devops.lib.utils import label, run
+from invoke import Context
 
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
     from yaml import Loader, Dumper
-
-from invoke import Context
-
-from devops.lib.log import logger
-from devops.lib.utils import run, label
 
 
 class ValidationError(Exception):
@@ -50,7 +49,8 @@ class Component:
         self.tag = "latest"
         self.replicas = None
 
-        self.kube_components = self._get_kube_components()
+        self.kube_configs = self._get_kube_configs()
+        self.kube_merges = {}
 
     def __str__(self):
         ipr = "set" if self.image_pull_secrets is not None else "not set"
@@ -95,6 +95,11 @@ class Component:
         for match in (env_path / "kube").glob("*.yaml"):
             logger.info(f"Found kube override {match.name} for {self.name} in {env}")
             self.kube_components[match.name] = match
+
+        merge_path = Path("envs") / env / "merges" / self.path.as_posix()
+        for match in (merge_path / "kube").glob("*.yaml"):
+            logger.info(f"Found kube merges {match.name} for {self.name} in {env}")
+            self.kube_merges[match.name] = match
 
     def release(
         self, ctx: Context, rel_path: Path, dry_run: bool, no_rollout_wait: bool
@@ -214,14 +219,20 @@ class Component:
             src = self.kube_components[component]  # Incl. env patch
             logger.info(f"Patching {component_file}")
             with src.open("r") as f:
-                docs = []
-                for d in yaml.load_all(f, Loader):
-                    docs.append(d)
-                self._patch_yaml_docs(docs)
-                dst_path = kube_dst / component
-                with dst_path.open("w") as component_dst:
-                    yaml.dump_all(docs, stream=component_dst, Dumper=Dumper)
-                self.kube_components[component] = dst_path
+                docs = list(yaml.load_all(f, Loader))
+
+            self._patch_yaml_docs(docs)
+
+            if config in self.kube_merges:
+                with self.kube_merges[config].open("r") as f:
+                    overrides = list(yaml.load_all(f, Loader))
+                docs = self._merge_docs(docs, overrides)
+
+            dst_path = kube_dst / config
+            with dst_path.open("w") as config_dst:
+                yaml.dump_all(docs, stream=config_dst, Dumper=Dumper)
+
+            self.kube_configs[config] = dst_path
 
         self.path = dst
 
@@ -345,6 +356,85 @@ class Component:
         image = self.name
         tag = self.tag
         return f"{prefix}{image}:{tag}"
+
+    @staticmethod
+    def _merge_docs(src: List[dict], overrides: List[dict]):
+        """
+        Merges Yaml documents.
+
+        You need to load the src documents using yaml.Loader and overrides with
+        yaml.BaseLoader for this to work properly.
+
+        :param src:
+        :param overrides:
+        :return dict: New dictionary of merged values
+        """
+        docs = deepcopy(src)
+
+        # TODO: Integer values end up replaced with strings due to use of BaseLoader
+        #       but BaseLoader is required to get "~" literals. What do?
+        def _merge_doc(doc, overrides, path=""):
+            if type(doc) == dict:
+                res = {}
+                for key in overrides:
+                    if overrides[key] == "~":
+                        # Remove these from target
+                        pass
+                    elif overrides[key] == "":
+                        # Use original value
+                        res[key] = doc[key]
+                    elif type(overrides[key]) in (str, int, bool, float, complex):
+                        # Simply overridden values
+                        res[key] = overrides[key]
+                    elif key not in doc:
+                        # Added values
+                        res[key] = overrides[key]
+                    else:
+                        # Nesting
+                        res[key] = _merge_doc(doc[key], overrides[key], f"{path}.{key}")
+
+                    # Remove all overridden values from source doc so we can later just
+                    # copy the remaining values over
+                    if key in doc:
+                        del doc[key]
+
+                for key in doc:
+                    res[key] = doc[key]
+
+                return res
+            elif type(doc) == list:
+                res = []
+                for idx, value_override in enumerate(overrides):
+                    if idx > len(doc) - 1:
+                        # Added values
+                        res.append(value_override)
+                        continue
+
+                    value = doc[idx]
+                    if value_override == "~":
+                        # Remove these from target
+                        continue
+                    elif value_override == "":
+                        # Use original value
+                        res.append(value)
+                    elif type(value_override) in (str, int, bool, float, complex):
+                        # Simply overridden values
+                        res.append(value_override)
+                    else:
+                        res.append(_merge_doc(value, value_override, f"{path}[{idx}]"))
+
+                if len(doc) > len(overrides):
+                    for item in doc[len(overrides) :]:
+                        res.append(item)
+
+                return res
+            else:
+                raise NotImplementedError(f"Dunno how to merge {type(doc)}")
+
+        for i, doc in enumerate(docs):
+            docs[i] = _merge_doc(doc, overrides[i])
+
+        return docs
 
     @staticmethod
     def _get_resource_name(doc: dict) -> str:
