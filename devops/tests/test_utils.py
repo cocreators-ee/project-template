@@ -1,10 +1,14 @@
+import json
 import sys
 from importlib import invalidate_caches
+from io import StringIO
 from pathlib import Path
 from shutil import rmtree
 
 import pytest
-from devops.lib.utils import list_envs, load_env_settings, run
+import yaml
+
+from devops.lib.utils import list_envs, load_env_settings, run, merge_docs
 
 TEST_ENV = "unit_test_env_6zxuj"
 TEST_ENV_PATH = Path("envs") / TEST_ENV
@@ -23,6 +27,211 @@ REPLICAS = {"service/TEST_COMPONENT_LOL": 3}
 IMAGE_PULL_SECRETS = {"service/TEST_COMPONENT_LOL": "secret"}
 """
 )
+
+# Human and computer diffable JSON format
+JSON_FORMAT = {"sort_keys": True, "indent": 2, "separators": (", ", ": ")}
+
+MERGE_TEST = """
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: myproj-constants
+data:
+  UNCHANGED_SETTING: "value"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: myproj-settings
+data:
+  MY_SETTING: "foo"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: big-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: big-deployment
+  template:
+    metadata:
+      labels:
+        app: big-deployment
+    spec:
+      containers:
+        - name: first-container
+          imagePullPolicy: IfNotPresent
+          image: first-container:latest
+        - name: second-container
+          imagePullPolicy: IfNotPresent
+          image: second-container:latest
+      volumes:
+        - name: some-data
+          persistentVolumeClaim:
+            claimName: some-data
+"""
+
+MERGE_CHANGES = """
+---
+---
+data:
+  MY_SETTING: "bar"
+---
+spec:
+  template:
+    spec:
+      containers:
+        -
+        - volumeMounts:
+            - mountPath: /var/run/docker.sock
+              name: docker-volume
+      volumes:
+        - persistentVolumeClaim: ~
+        - name: docker-volume
+          hostPath:
+            path: /var/run/docker.sock
+"""
+
+MERGE_EXPECTED = """
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: myproj-constants
+data:
+  UNCHANGED_SETTING: "value"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: myproj-settings
+data:
+  MY_SETTING: "bar"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: big-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: big-deployment
+  template:
+    metadata:
+      labels:
+        app: big-deployment
+    spec:
+      containers:
+        - name: first-container
+          imagePullPolicy: IfNotPresent
+          image: first-container:latest
+        - name: second-container
+          imagePullPolicy: IfNotPresent
+          image: second-container:latest
+          volumeMounts:
+            - mountPath: /var/run/docker.sock
+              name: docker-volume
+      volumes:
+        - name: some-data
+        - name: docker-volume
+          hostPath:
+            path: /var/run/docker.sock
+"""
+
+README_MERGE_SRC = """
+# component/kube/01-example.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: myproj-settings
+data:
+  MY_SETTING: "foo"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-deployment
+spec:
+  selector:
+    matchLabels:
+      app: my-deployment
+  template:
+    metadata:
+      labels:
+        app: my-deployment
+    spec:
+      containers:
+        - name: my-container
+          imagePullPolicy: IfNotPresent
+          image: my-container:latest
+          env:
+            - name: ANOTHER_SETTING
+              value: some-value
+          volumeMounts:
+            - mountPath: /var/run/docker.sock
+              name: docker-volume
+"""
+
+README_MERGE_OVERRIDE = """
+# envs/test/merges/component/kube/01-example.yaml
+data:
+  MY_SETTING: "bar"
+---
+spec:
+  template:
+    spec:
+      containers:
+        - env:
+            - name: ANOTHER_SETTING # this prop is here just for clarity
+              value: another-value
+          volumeMounts: ~
+          livenessProbe:
+            exec:
+              command:
+               - cat
+               - /tmp/healthy
+            initialDelaySeconds: 5
+            periodSeconds: 5
+"""
+
+README_MERGE_EXPECTED = """
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: myproj-settings
+data:
+  MY_SETTING: "bar"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-deployment
+spec:
+  selector:
+    matchLabels:
+      app: my-deployment
+  template:
+    metadata:
+      labels:
+        app: my-deployment
+    spec:
+      containers:
+        - name: my-container
+          imagePullPolicy: IfNotPresent
+          image: my-container:latest
+          env:
+            - name: ANOTHER_SETTING
+              value: another-value
+          livenessProbe:
+            exec:
+              command:
+               - cat
+               - /tmp/healthy
+            initialDelaySeconds: 5
+            periodSeconds: 5
+"""
 
 
 def clean_caches():
@@ -69,3 +278,39 @@ def test_run():
     res = run(["python", "--version"])
     ver = sys.version.split(" ")[0]
     assert res.stdout.decode("utf-8").strip() == f"Python {ver}"
+
+
+def test_kube_merge():
+    docs = list(yaml.load_all(StringIO(MERGE_TEST), yaml.Loader))
+    overrides = list(yaml.load_all(StringIO(MERGE_CHANGES), yaml.BaseLoader))
+    expected = list(yaml.load_all(StringIO(MERGE_EXPECTED), yaml.Loader))
+
+    merged = merge_docs(docs, overrides)
+    for i, merged_doc in enumerate(merged):
+        expected_doc = expected[i]
+
+        merged_json = json.dumps(merged_doc, **JSON_FORMAT)
+        expected_json = json.dumps(expected_doc, **JSON_FORMAT)
+
+        print(f"Doc {i + 1} expected: {expected_json}")
+        print(f"Doc {i + 1} actual  : {merged_json}")
+
+        assert merged_json == expected_json
+
+
+def test_readme_kube_merge():
+    docs = list(yaml.load_all(StringIO(README_MERGE_SRC), yaml.Loader))
+    overrides = list(yaml.load_all(StringIO(README_MERGE_OVERRIDE), yaml.BaseLoader))
+    expected = list(yaml.load_all(StringIO(README_MERGE_EXPECTED), yaml.Loader))
+
+    merged = merge_docs(docs, overrides)
+    for i, merged_doc in enumerate(merged):
+        expected_doc = expected[i]
+
+        merged_json = json.dumps(merged_doc, **JSON_FORMAT)
+        expected_json = json.dumps(expected_doc, **JSON_FORMAT)
+
+        print(f"Doc {i + 1} expected: {expected_json}")
+        print(f"Doc {i + 1} actual  : {merged_json}")
+
+        assert merged_json == expected_json

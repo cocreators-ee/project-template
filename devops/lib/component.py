@@ -1,17 +1,14 @@
 import json
 import random
-from copy import deepcopy
 from pathlib import Path
 from shutil import copy
 from typing import List, Optional
 
 import yaml
-from devops.lib.log import logger
-from devops.lib.utils import label, run
 from invoke import Context
 
 from devops.lib.log import logger
-from devops.lib.utils import label, run
+from devops.lib.utils import label, run, merge_docs
 
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
@@ -241,7 +238,7 @@ class Component:
             if config in self.kube_merges:
                 with self.kube_merges[config].open("r") as f:
                     overrides = list(yaml.load_all(f, Loader))
-                docs = self._merge_docs(docs, overrides)
+                docs = merge_docs(docs, overrides)
 
             dst_path = kube_dst / config
             with dst_path.open("w") as config_dst:
@@ -387,85 +384,6 @@ class Component:
         image = self.name
         tag = self.tag
         return f"{prefix}{image}:{tag}"
-
-    @staticmethod
-    def _merge_docs(src: List[dict], overrides: List[dict]):
-        """
-        Merges Yaml documents.
-
-        You need to load the src documents using yaml.Loader and overrides with
-        yaml.BaseLoader for this to work properly.
-
-        :param src:
-        :param overrides:
-        :return dict: New dictionary of merged values
-        """
-        docs = deepcopy(src)
-
-        # TODO: Integer values end up replaced with strings due to use of BaseLoader
-        #       but BaseLoader is required to get "~" literals. What do?
-        def _merge_doc(doc, overrides, path=""):
-            if type(doc) == dict:
-                res = {}
-                for key in overrides:
-                    if overrides[key] == "~":
-                        # Remove these from target
-                        pass
-                    elif overrides[key] == "":
-                        # Use original value
-                        res[key] = doc[key]
-                    elif type(overrides[key]) in (str, int, bool, float, complex):
-                        # Simply overridden values
-                        res[key] = overrides[key]
-                    elif key not in doc:
-                        # Added values
-                        res[key] = overrides[key]
-                    else:
-                        # Nesting
-                        res[key] = _merge_doc(doc[key], overrides[key], f"{path}.{key}")
-
-                    # Remove all overridden values from source doc so we can later just
-                    # copy the remaining values over
-                    if key in doc:
-                        del doc[key]
-
-                for key in doc:
-                    res[key] = doc[key]
-
-                return res
-            elif type(doc) == list:
-                res = []
-                for idx, value_override in enumerate(overrides):
-                    if idx > len(doc) - 1:
-                        # Added values
-                        res.append(value_override)
-                        continue
-
-                    value = doc[idx]
-                    if value_override == "~":
-                        # Remove these from target
-                        continue
-                    elif value_override == "":
-                        # Use original value
-                        res.append(value)
-                    elif type(value_override) in (str, int, bool, float, complex):
-                        # Simply overridden values
-                        res.append(value_override)
-                    else:
-                        res.append(_merge_doc(value, value_override, f"{path}[{idx}]"))
-
-                if len(doc) > len(overrides):
-                    for item in doc[len(overrides) :]:
-                        res.append(item)
-
-                return res
-            else:
-                raise NotImplementedError(f"Dunno how to merge {type(doc)}")
-
-        for i, doc in enumerate(docs):
-            docs[i] = _merge_doc(doc, overrides[i])
-
-        return docs
 
     @staticmethod
     def _get_resource_name(doc: dict) -> str:
