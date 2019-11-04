@@ -12,6 +12,12 @@ pyyaml = "^5.1"
 
 [tool.poetry.dev-dependencies]
 
+[tool.isort]
+line_length = 88
+use_parentheses = true
+include_trailing_comma = true
+multi_line_output = 3
+
 [build-system]
 requires = ["poetry>=0.12"]
 build-backend = "poetry.masonry.api"

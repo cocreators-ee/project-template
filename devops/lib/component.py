@@ -6,16 +6,14 @@ from subprocess import run as sp_run
 from typing import List, Optional
 
 import yaml
+from devops.lib.log import logger
+from devops.lib.utils import label, run
+from invoke import Context
 
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
     from yaml import Loader, Dumper
-
-from invoke import Context
-
-from devops.lib.log import logger
-from devops.lib.utils import run, label
 
 
 class ValidationError(Exception):
@@ -50,27 +48,28 @@ class Component:
         self.tag = "latest"
         self.replicas = None
 
-        self.kube_components = self._get_kube_components()
+        self.kube_configs = self._get_kube_configs()
+        self.obsolete_kube_configs = self._get_obsolete_kube_configs()
 
     def __str__(self):
-        ipr = "set" if self.image_pull_secrets is not None else "not set"
+        ips = "set" if self.image_pull_secrets is not None else "not set"
         return (
             f"<Component "
             f"path={self.path} "
             f"image={self.image} "
             f"tag={self.tag} "
-            f"ipr={ipr}>"
+            f"ips={ips}>"
         )
 
     def validate(self, ctx=None):
-        if not self.kube_components:
-            raise ValueError(f"No kube components found in {self.path / 'kube'}")
+        if not self.kube_configs:
+            raise ValueError(f"No kube configs found in {self.path / 'kube'}")
 
         if not ctx:
             return
 
-        for file in self.kube_components:
-            path = self.kube_components[file]
+        for file in self.kube_configs:
+            path = self.kube_configs[file]
             result = sp_run(["kubeval", str(path)])
             if result.returncode > 0:
                 raise ValidationError(f"Validation failed for {path}")
@@ -94,7 +93,7 @@ class Component:
         env_path = Path("envs") / env / self.path.as_posix()
         for match in (env_path / "kube").glob("*.yaml"):
             logger.info(f"Found kube override {match.name} for {self.name} in {env}")
-            self.kube_components[match.name] = match
+            self.kube_configs[match.name] = match
 
     def release(
         self, ctx: Context, rel_path: Path, dry_run: bool, no_rollout_wait: bool
@@ -105,10 +104,14 @@ class Component:
         self._post_release(ctx, dry_run)
 
     def _do_release(self, ctx: Context, dry_run: bool):
-        for component in self.kube_components:
-            component_path = self.kube_components[component]
+        for config in self.kube_configs:
+            path = self.kube_configs[config]
 
-            self._release_kube_component(ctx, component_path, dry_run)
+            self._release_kube_config(ctx, path, dry_run)
+
+        for config in self.obsolete_kube_configs:
+            path = self.kube_configs[config]
+            self._delete_kube_config(ctx, path, dry_run)
 
     def _post_release(self, ctx: Context, dry_run: bool):
         if not (self.orig_path / "post-release.sh").exists():
@@ -166,15 +169,21 @@ class Component:
             check=False,
         )
 
-    def _release_kube_component(
-        self, ctx: Context, component_path: Path, dry_run: bool
-    ):
+    def _release_kube_config(self, ctx: Context, config: Path, dry_run: bool):
         if dry_run:
-            logger.info(f"[DRY RUN] Applying {component_path}")
+            logger.info(f"[DRY RUN] Applying {config}")
             return
 
-        logger.info(f"Applying {component_path}")
-        run(["kubectl", "apply", "-f", component_path])
+        logger.info(f"Applying {config}")
+        run(["kubectl", "apply", "-f", config])
+
+    def _delete_kube_config(self, ctx: Context, config: Path, dry_run: bool):
+        if dry_run:
+            logger.info(f"[DRY RUN] Deleting {config}")
+            return
+
+        logger.info(f"Deleting {config}")
+        run(["kubectl", "delete", "-f", config])
 
     def _restart_resources(self, ctx: Context, dry_run: bool, no_rollout_wait: bool):
         resources = self._get_resources()
@@ -209,19 +218,19 @@ class Component:
             logger.info("Copying Dockerfile")
             copy(dockerfile, dst / "Dockerfile")
 
-        for component in self.kube_components:
-            component_file = self.path / "kube" / component
-            src = self.kube_components[component]  # Incl. env patch
-            logger.info(f"Patching {component_file}")
+        for config in self.kube_configs:
+            config_file = self.path / "kube" / config
+            src = self.kube_configs[config]  # Incl. env patch
+            logger.info(f"Patching {config_file}")
             with src.open("r") as f:
                 docs = []
                 for d in yaml.load_all(f, Loader):
                     docs.append(d)
                 self._patch_yaml_docs(docs)
-                dst_path = kube_dst / component
-                with dst_path.open("w") as component_dst:
-                    yaml.dump_all(docs, stream=component_dst, Dumper=Dumper)
-                self.kube_components[component] = dst_path
+                dst_path = kube_dst / config
+                with dst_path.open("w") as config_dst:
+                    yaml.dump_all(docs, stream=config_dst, Dumper=Dumper)
+                self.kube_configs[config] = dst_path
 
         self.path = dst
 
@@ -309,25 +318,41 @@ class Component:
                 tpl_spec = spec["template"]["spec"]
                 tpl_spec["imagePullSecrets"] = [{"name": secret}]
 
-    def _get_kube_components(self, path=None):
+    def _get_kube_configs(self, path=None):
         if path is None:
             path = self.path
 
-        components = {}
+        config = {}
         for match in (path / "kube").glob("*.yaml"):
-            logger.info(f"Found kube file {match.name} for {self.name}")
-            components[match.name] = match
+            logger.info(f"Found kube config {match.name} for {self.name}")
+            config[match.name] = match
 
-        return components
+        return config
+
+    def _get_obsolete_kube_configs(self, path=None):
+        if path is None:
+            path = self.path
+
+        obs_path = path / "kube" / "obsolete"
+
+        configs = {}
+        if not obs_path.exists():
+            return configs
+
+        for match in obs_path.glob("*.yaml"):
+            logger.info(f"Found obsoleted kube config {match.name} for {self.name}")
+            configs[match.name] = match
+
+        return configs
 
     def _get_resources(self) -> dict:
         if self._resources:
             return self._resources
 
         self._resources = {}
-        for component in self.kube_components:
-            component_file = self.kube_components[component]
-            with component_file.open("r") as f:
+        for config in self.kube_configs:
+            config_file = self.kube_configs[config]
+            with config_file.open("r") as f:
                 docs = yaml.load_all(f, Loader)
                 for doc in docs:
                     name = self._get_resource_name(doc)

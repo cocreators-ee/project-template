@@ -4,12 +4,11 @@ from pathlib import Path
 from shutil import rmtree
 from typing import List
 
-from invoke import Context
-
 from devops.lib.component import Component
 from devops.lib.log import logger
-from devops.lib.utils import list_envs, load_env_settings, big_label, label, run
+from devops.lib.utils import big_label, label, list_envs, load_env_settings, run
 from devops.settings import IMAGE_PREFIX
+from invoke import Context
 
 RELEASE_TMP = Path("temp")
 
@@ -61,8 +60,8 @@ def ensure_namespace(namespace):
 
 def release_env(ctx: Context, env, dry_run=False):
     env_path = Path("envs") / env
-    secrets = (env_path / "secrets").glob("*.yaml")
 
+    secrets = (env_path / "secrets").glob("*.yaml")
     for secret in sorted(secrets):
         # Sealed Secrets can't be validated like this
         # ctx.run(f"kubeval {secret}")
@@ -72,6 +71,15 @@ def release_env(ctx: Context, env, dry_run=False):
 
         logger.info(f"Applying {secret}")
         run(["kubectl", "apply", "-f", secret])
+
+    old_secrets = (env_path / "secrets" / "obsolete").glob("*.yaml")
+    for secret in sorted(old_secrets, reverse=True):
+        if dry_run:
+            logger.info(f"[DRY RUN] Deleting {secret}")
+            continue
+
+        logger.info(f"Deleting {secret}")
+        run(["kubectl", "delete", "-f", secret])
 
 
 def release(
