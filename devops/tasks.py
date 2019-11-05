@@ -17,7 +17,7 @@ def generate_release_id() -> str:
     length = 5
     chars = string.ascii_lowercase + string.digits
 
-    return "".join(random.choice(chars) for _ in range(length))
+    return "".join(random.choice(chars) for _ in range(length))  # nosec
 
 
 def build_images(ctx, components, dry_run=False):

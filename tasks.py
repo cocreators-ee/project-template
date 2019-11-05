@@ -1,6 +1,6 @@
 import json
 import re
-import subprocess
+from subprocess import CalledProcessError  # nosec
 from os import environ
 from pathlib import Path
 from time import sleep
@@ -130,7 +130,7 @@ def init_kubernetes(ctx, env):
     while True:
         try:
             res = run(["kubeseal", "--fetch-cert"])
-        except subprocess.CalledProcessError:
+        except CalledProcessError:
             attempts -= 1
             if attempts <= 0:
                 raise Exception("Failed to fetch Sealed Secrets cert")

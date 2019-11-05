@@ -11,12 +11,18 @@ coloredlogs = "^10.0"
 pyyaml = "^5.1"
 
 [tool.poetry.dev-dependencies]
+pytest = "^5.2"
+codecov = "^2.0"
 
 [tool.isort]
 line_length = 88
 use_parentheses = true
 include_trailing_comma = true
 multi_line_output = 3
+
+# Not actually supported yet, future-proofing
+[tool.bandit]
+skips = "B101"
 
 [build-system]
 requires = ["poetry>=0.12"]

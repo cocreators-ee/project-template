@@ -2,13 +2,13 @@ import json
 import random
 from pathlib import Path
 from shutil import copy
-from subprocess import run as sp_run
 from typing import List, Optional
 
 import yaml
-from devops.lib.log import logger
-from devops.lib.utils import label, run
 from invoke import Context
+
+from devops.lib.log import logger
+from devops.lib.utils import label, run, merge_docs
 
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
@@ -20,7 +20,8 @@ class ValidationError(Exception):
     pass
 
 
-SKIP_KUBE_KINDS = (
+# Kubernetes resource types that do not need to be patched
+SKIP_PATCH_KUBE_KINDS = (
     "ClusterRole",
     "ClusterRoleBinding",
     "Role",
@@ -28,6 +29,7 @@ SKIP_KUBE_KINDS = (
     "ServiceAccount",
 )
 
+# https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#rollout
 RESTART_RESOURCES = ("Deployment", "DaemonSet", "StatefulSet")
 
 # How long to wait for any rollout to successfully complete before failing
@@ -49,6 +51,7 @@ class Component:
         self.replicas = None
 
         self.kube_configs = self._get_kube_configs()
+        self.kube_merges = {}
         self.obsolete_kube_configs = self._get_obsolete_kube_configs()
 
     def __str__(self):
@@ -70,7 +73,7 @@ class Component:
 
         for file in self.kube_configs:
             path = self.kube_configs[file]
-            result = sp_run(["kubeval", str(path)])
+            result = run(["kubeval", path])
             if result.returncode > 0:
                 raise ValidationError(f"Validation failed for {path}")
 
@@ -94,6 +97,11 @@ class Component:
         for match in (env_path / "kube").glob("*.yaml"):
             logger.info(f"Found kube override {match.name} for {self.name} in {env}")
             self.kube_configs[match.name] = match
+
+        merge_path = Path("envs") / env / "merges" / self.path.as_posix()
+        for match in (merge_path / "kube").glob("*.yaml"):
+            logger.info(f"Found kube merges {match.name} for {self.name} in {env}")
+            self.kube_merges[match.name] = match
 
     def release(
         self, ctx: Context, rel_path: Path, dry_run: bool, no_rollout_wait: bool
@@ -154,7 +162,7 @@ class Component:
         if not pods:
             raise Exception(f"No running pods with correct image found for {resource}")
 
-        pod = random.choice(pods)
+        pod = random.choice(pods)  # nosec
         run(
             [
                 "kubectl",
@@ -223,14 +231,20 @@ class Component:
             src = self.kube_configs[config]  # Incl. env patch
             logger.info(f"Patching {config_file}")
             with src.open("r") as f:
-                docs = []
-                for d in yaml.load_all(f, Loader):
-                    docs.append(d)
-                self._patch_yaml_docs(docs)
-                dst_path = kube_dst / config
-                with dst_path.open("w") as config_dst:
-                    yaml.dump_all(docs, stream=config_dst, Dumper=Dumper)
-                self.kube_configs[config] = dst_path
+                docs = list(yaml.load_all(f, Loader))
+
+            self._patch_yaml_docs(docs)
+
+            if config in self.kube_merges:
+                with self.kube_merges[config].open("r") as f:
+                    overrides = list(yaml.load_all(f, Loader))
+                docs = merge_docs(docs, overrides)
+
+            dst_path = kube_dst / config
+            with dst_path.open("w") as config_dst:
+                yaml.dump_all(docs, stream=config_dst, Dumper=Dumper)
+
+            self.kube_configs[config] = dst_path
 
         self.path = dst
 
@@ -239,7 +253,7 @@ class Component:
         for doc in config:
             kind = doc["kind"]
 
-            if kind in SKIP_KUBE_KINDS:
+            if kind in SKIP_PATCH_KUBE_KINDS:
                 logger.info(f"Skipping {kind} patching")
                 continue
 
