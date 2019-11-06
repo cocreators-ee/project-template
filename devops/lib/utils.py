@@ -56,7 +56,7 @@ def run(
     :param str cwd:
     :param bool check:
     :param dict env:
-    :param stream bool: If the output should be streamed instead of captured
+    :param bool stream: If the output should be streamed instead of captured
     :param float timeout: Seconds to wait before failing
     :raises subprocess.CalledProcessError:
     :raises subprocess.TimeoutExpired:
