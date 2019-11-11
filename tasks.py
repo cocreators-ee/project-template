@@ -29,11 +29,11 @@ validate_release_configs = task(devops.tasks.validate_release_configs)
         + ", ".join(ALL_COMPONENTS)
     },
 )
-def build_images(ctx, component=None):
-    if component is None:
+def build_images(ctx, component):
+    if not component:
         components = ALL_COMPONENTS
     else:
-        components = component.split(",")
+        components = [c.strip() for cs in component for c in cs.split(",")]
 
     if "DOCKER_HOST" not in environ:
         logger.warn(
