@@ -11,9 +11,9 @@ from devops.lib.log import logger
 from devops.lib.utils import label, run, merge_docs
 
 try:
-    from yaml import CLoader as Loader, CDumper as Dumper
+    from yaml import CBaseLoader as BaseLoader, CLoader as Loader, CDumper as Dumper
 except ImportError:
-    from yaml import Loader, Dumper
+    from yaml import BaseLoader, Loader, Dumper
 
 
 class ValidationError(Exception):
@@ -237,7 +237,7 @@ class Component:
 
             if config in self.kube_merges:
                 with self.kube_merges[config].open("r") as f:
-                    overrides = list(yaml.load_all(f, Loader))
+                    overrides = list(yaml.load_all(f, BaseLoader))
                 docs = merge_docs(docs, overrides)
 
             dst_path = kube_dst / config
