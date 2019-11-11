@@ -218,7 +218,7 @@ class Component:
     def _prepare_configs(self, dst: Path):
         dst = dst / self.path
         kube_dst = dst / "kube"
-        kube_dst.mkdir(mode=700, parents=True)
+        kube_dst.mkdir(mode=0o700, parents=True)
         logger.info(f"Writing configs to {dst}")
 
         dockerfile = self.path / "Dockerfile"
