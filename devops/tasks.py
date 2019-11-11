@@ -195,4 +195,5 @@ def release(
 
     if not keep_configs:
         logger.info(f"Removing temporary configurations from {rel_path}")
-        rmtree(rel_path)
+        if rel_path.exists():
+            rmtree(rel_path)
