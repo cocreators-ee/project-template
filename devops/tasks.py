@@ -159,14 +159,13 @@ def release(
         component = Component(path)
         if path in images:
             component.image = images[path]
-            del images[path]
+            images.pop(path)
         if path in tags:
             component.tag = tags[path]
-            del images[tag]
+            tags.pop(path)
         if path in settings.REPLICAS:
             component.replicas = settings.REPLICAS[path]
-            if path in replica_counts:
-                del replica_counts[path]
+            replica_counts.pop(path, None)
 
         component.image_prefix = IMAGE_PREFIX
         component.namespace = settings.KUBE_NAMESPACE
