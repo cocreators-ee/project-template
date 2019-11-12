@@ -8,4 +8,5 @@ __pycache__
 node_modules
 temp
 settings_local.py
-/.venv/
+.venv/
+.env/
