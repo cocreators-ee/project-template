@@ -159,10 +159,10 @@ def release(
         component = Component(path)
         if path in images:
             component.image = images[path]
-            images.pop(path, None)
+            images.pop(path)
         if path in tags:
             component.tag = tags[path]
-            tags.pop(path, None)
+            tags.pop(path)
         if path in settings.REPLICAS:
             component.replicas = settings.REPLICAS[path]
             replica_counts.pop(path, None)
