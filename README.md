@@ -35,6 +35,7 @@ Every machine where you run projects based on this, perform builds,
 releases or similar should likely have the following installed:
 
  - [Python >=3.6](https://www.python.org/downloads/)
+ - [Pyenv](https://github.com/pyenv/pyenv)
  - [Poetry](https://poetry.eustace.io)
  - [Kubeval](https://kubeval.instrumenta.dev/installation/)
  - [Kubeseal](https://github.com/bitnami-labs/sealed-secrets/releases)
