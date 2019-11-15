@@ -20,7 +20,7 @@ script:
   - poetry run coverage xml -i
   - mkdir coverage-reports
   - mv coverage.xml coverage-reports/coverage-python.xml
-  - sonar-scanner
+  - if which sonar-scanner >/dev/null; then sonar-scanner; fi  # Travis why you make things difficult?
 
 addons:
   sonarcloud:
