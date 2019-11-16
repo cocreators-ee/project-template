@@ -5,7 +5,7 @@ from copy import deepcopy
 from io import StringIO
 from pathlib import Path
 from time import time
-from typing import List, Optional
+from typing import Callable, List, Optional, Union
 
 import yaml
 
@@ -76,24 +76,32 @@ def run(
     if timeout:
         kwargs["timeout"] = timeout
 
+    start = time()
     try:
-        start = time()
         res = subprocess.run(args, **kwargs)  # nosec
-        end = time()
-        logger.info(f"  ✔ ... done in {end - start:.3f}s")
-
-        return res
     except subprocess.CalledProcessError as e:
         logger.error("Failed to run" + " ".join(args))
-        if e.stdout:
-            logger.error("----- STDOUT -----")
-            logger.error(e.stdout.decode("utf-8"))
-        if e.stderr:
-            logger.error("----- STDERR -----")
-            logger.error(e.stderr.decode("utf-8"))
-        if e.stdout or e.stderr:
-            logger.error("------------------")
+        log_subprocess_output(e, logger.error)
+        logger.error(f"  ✘ ... failed in {time() - start:.3f}s")
         raise
+    else:
+        log_subprocess_output(res, logger.debug)
+        logger.info(f"  ✔ ... done in {time() - start:.3f}s")
+        return res
+
+
+def log_subprocess_output(
+    res: Union[subprocess.CompletedProcess, subprocess.CalledProcessError],
+    log: Callable,
+):
+    if res.stdout:
+        log("  ----- STDOUT -----")
+        log(res.stdout.decode("utf-8").strip())
+    if res.stderr:
+        log("  ----- STDERR -----")
+        log(res.stderr.decode("utf-8").strip())
+    if res.stdout or res.stderr:
+        log("  ------------------")
 
 
 def label(fn, text: str):
