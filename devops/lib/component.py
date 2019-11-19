@@ -4,11 +4,11 @@ from pathlib import Path
 from shutil import copy
 from typing import List, Optional
 
+import jinja2
 import yaml
-from invoke import Context
-
 from devops.lib.log import logger
-from devops.lib.utils import label, run, merge_docs
+from devops.lib.utils import label, merge_docs, run
+from invoke import Context
 
 try:
     from yaml import CBaseLoader as BaseLoader, CLoader as Loader, CDumper as Dumper
@@ -51,6 +51,7 @@ class Component:
         self.replicas = None
 
         self.kube_configs = self._get_kube_configs()
+        self.merge_templates = self._get_merge_templates()
         self.kube_merges = {}
         self.obsolete_kube_configs = self._get_obsolete_kube_configs()
 
@@ -102,6 +103,35 @@ class Component:
         for match in (merge_path / "kube").glob("*.yaml"):
             logger.info(f"Found kube merges {match.name} for {self.name} in {env}")
             self.kube_merges[match.name] = match
+
+    def render_merge_templates(self, env, settings):
+        if not self.merge_templates:
+            return
+
+        logger.info(f"Creating merge files for {self.name} for env {env}")
+
+        jinja_context = getattr(settings, "TEMPLATE_VARIABLES", {})
+
+        output_path = Path("envs") / env / "merges" / self.path.as_posix() / "kube"
+        if not output_path.is_dir():
+            output_path.mkdir(mode=0o700, parents=True)
+
+        for name, template_path in self.merge_templates.items():
+            with template_path.open(mode="r", encoding="utf-8") as f:
+                content = f.read()
+
+            template = jinja2.Template(content, undefined=jinja2.StrictUndefined)
+            try:
+                content = template.render(jinja_context) + "\n"
+            except jinja2.exceptions.UndefinedError as ex:
+                raise ValueError(
+                    f"Failed to render template {template_path} for env {env}, "
+                    f"reason: {ex.message}"
+                )
+
+            output_file = output_path / name
+            with output_file.open(mode="w", encoding="utf-8") as f:
+                f.write(content)
 
     def release(
         self, ctx: Context, rel_path: Path, dry_run: bool, no_rollout_wait: bool
@@ -342,6 +372,17 @@ class Component:
             config[match.name] = match
 
         return config
+
+    def _get_merge_templates(self, path=None):
+        if path is None:
+            path = self.path
+
+        merge_templates = {}
+        for match in (path / "kube" / "merge-templates").glob("*.yaml"):
+            logger.info(f"Found merge-template {match.name} for {self.name}")
+            merge_templates[match.name] = match
+
+        return merge_templates
 
     def _get_obsolete_kube_configs(self, path=None):
         if path is None:

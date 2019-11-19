@@ -28,6 +28,17 @@ def build_images(ctx, components, dry_run=False):
         component.build(ctx, dry_run)
 
 
+def update_from_templates(ctx):
+    envs = list_envs()
+    for env in envs:
+        settings = load_env_settings(env)
+        components = settings.COMPONENTS
+
+        for path in components:
+            component = Component(path)
+            component.render_merge_templates(env, settings)
+
+
 def validate_release_configs(ctx):
     envs = list_envs()
     for env in envs:

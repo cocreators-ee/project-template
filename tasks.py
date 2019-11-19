@@ -1,15 +1,14 @@
 import json
 import re
-from subprocess import CalledProcessError  # nosec
 from os import environ
 from pathlib import Path
+from subprocess import CalledProcessError  # nosec
 from time import sleep
-
-from invoke import task, Context
 
 import devops.tasks
 from devops.lib.log import logger
-from devops.lib.utils import list_envs, big_label, label, run, load_env_settings
+from devops.lib.utils import big_label, label, list_envs, load_env_settings, run
+from invoke import Context, task
 
 ALL_COMPONENTS = ["service/pipeline-agent"]
 
@@ -237,6 +236,15 @@ def kubeval(ctx):
     ]
 
     run(["kubeval"] + kube_yamls)
+
+
+@task()
+def update_from_templates(ctx):
+    """
+    Update kube yaml merges from templates
+    :param Context ctx:
+    """
+    devops.tasks.update_from_templates(ctx)
 
 
 @task(pre=[kubeval])
