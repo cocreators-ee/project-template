@@ -8,6 +8,7 @@ import jinja2
 import yaml
 from devops.lib.log import logger
 from devops.lib.utils import label, merge_docs, run
+from devops.settings import TEMPLATE_HEADER
 from invoke import Context
 
 try:
@@ -124,7 +125,9 @@ class Component:
 
             template = jinja2.Template(content, undefined=jinja2.StrictUndefined)
             try:
-                content = template.render(jinja_context) + "\n"
+                content = TEMPLATE_HEADER.format(file=template_path)
+                content += template.render(jinja_context)
+                content += "\n"
             except jinja2.exceptions.UndefinedError as ex:
                 raise ValueError(
                     f"Failed to render template {template_path} for env {env}, "
