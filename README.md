@@ -387,7 +387,7 @@ For example:
 
 ```bash
 # Create a secret, output as yaml to a file and don't run on server
-kubectl create secret my-secret \
+kubectl create secret generic my-secret \
     -o yaml \
     --dry-run \
     --from-literal=foo=bar > my-secret.yaml
