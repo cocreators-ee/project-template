@@ -105,8 +105,10 @@ class Component:
             self.kube_merges[match.name] = match
 
     def render_merge_templates(self, env, settings):
+        rendered_files = []
+
         if not self.merge_templates:
-            return
+            return rendered_files
 
         logger.info(f"Creating merge files for {self.name} for env {env}")
 
@@ -132,6 +134,9 @@ class Component:
             output_file = output_path / name
             with output_file.open(mode="w", encoding="utf-8") as f:
                 f.write(content)
+                rendered_files.append(output_file)
+
+        return rendered_files
 
     def release(
         self, ctx: Context, rel_path: Path, dry_run: bool, no_rollout_wait: bool

@@ -30,13 +30,17 @@ def build_images(ctx, components, dry_run=False):
 
 def update_from_templates(ctx):
     envs = list_envs()
+
+    rendered_files = []
     for env in envs:
         settings = load_env_settings(env)
         components = settings.COMPONENTS
 
         for path in components:
             component = Component(path)
-            component.render_merge_templates(env, settings)
+            rendered_files.extend(component.render_merge_templates(env, settings))
+
+    return rendered_files
 
 
 def validate_release_configs(ctx):
