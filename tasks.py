@@ -8,7 +8,7 @@ from time import sleep
 import devops.tasks
 from devops.lib.log import logger
 from devops.lib.utils import big_label, label, list_envs, load_env_settings, run
-from invoke import Context, Exit, task
+from invoke import Context, task
 
 ALL_COMPONENTS = ["service/pipeline-agent"]
 
