@@ -106,6 +106,28 @@ class Component:
             self.kube_merges[match.name] = match
 
     def render_merge_templates(self, env, settings):
+        output_path = Path("envs") / env / "merges" / self.path.as_posix() / "kube"
+
+        # Remove all old rendered merge files, but leave any manually created ones
+        logger.info(f"Cleaning up old merge files for {self.name} for env {env}")
+        old_files = output_path.glob("*.yaml")
+        for old_file in old_files:
+            template_path = old_file.relative_to(Path("envs") / env / "merges")
+            template_path = (
+                template_path.parent / "merge-templates" / template_path.name
+            )
+
+            with old_file.open(mode="r", encoding="utf-8") as f:
+                content = f.read()
+            if content.startswith(TEMPLATE_HEADER.format(file=template_path)):
+                old_file.unlink()
+                logger.info(f"Deleted rendered file {old_file}")
+            else:
+                logger.info(
+                    f"Keeping merge file {old_file}, it does not appear to have been rendered from a template"
+                )
+
+        jinja_context = getattr(settings, "TEMPLATE_VARIABLES", {})
         rendered_files = []
 
         if not self.merge_templates:
@@ -113,9 +135,6 @@ class Component:
 
         logger.info(f"Creating merge files for {self.name} for env {env}")
 
-        jinja_context = getattr(settings, "TEMPLATE_VARIABLES", {})
-
-        output_path = Path("envs") / env / "merges" / self.path.as_posix() / "kube"
         if not output_path.is_dir():
             output_path.mkdir(mode=0o700, parents=True)
 
@@ -129,7 +148,7 @@ class Component:
                 content += template.render(jinja_context)
                 content += "\n"
             except jinja2.exceptions.UndefinedError as ex:
-                raise ValueError(
+                raise Exception(
                     f"Failed to render template {template_path} for env {env}, "
                     f"reason: {ex.message}"
                 )
@@ -138,6 +157,7 @@ class Component:
             with output_file.open(mode="w", encoding="utf-8") as f:
                 f.write(content)
                 rendered_files.append(output_file)
+            logger.info(f"Rendered merge file {output_file}")
 
         return rendered_files
 
