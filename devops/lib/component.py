@@ -121,9 +121,9 @@ class Component:
                 content = f.read()
             if content.startswith(TEMPLATE_HEADER.format(file=template_path)):
                 old_file.unlink()
-                logger.info(f"Deleted rendered file {old_file}")
+                logger.debug(f"Deleted rendered file {old_file}")
             else:
-                logger.info(
+                logger.debug(
                     f"Keeping merge file {old_file}, it does not appear to have been rendered from a template"
                 )
 
@@ -157,7 +157,7 @@ class Component:
             with output_file.open(mode="w", encoding="utf-8") as f:
                 f.write(content)
                 rendered_files.append(output_file)
-            logger.info(f"Rendered merge file {output_file}")
+            logger.debug(f"Rendered merge file {output_file}")
 
         return rendered_files
 
