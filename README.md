@@ -102,9 +102,9 @@ and they will be applied during release. Similarly the files in
 `envs/<env>/secrets/obsolete/` will have their resources deleted.
 
 Thirdly, if you need to override any component's `kube/` configs, you
-can store an override to `envs/<env>/component/path/kube/<file>.yaml`,
+can store an override to `envs/<env>/overrides/component/path/kube/<file>.yaml`,
 e.g. `api/test/v1/kube/01-config.yaml` could be overridden for `staging`
-env by creating `envs/staging/api/test/v1/kube/01-config.yaml` with the
+env by creating `envs/staging/overrides/api/test/v1/kube/01-config.yaml` with the
 full replacement contents.
 
 If you want to do purely local settings for `devops` scripts, e.g. to
@@ -144,7 +144,7 @@ spec:
 ```
 
 Otherwise it should work pretty much as expected. Any items in original
-file that do not exist in overrides, stay untouched. Any new items are
+file that do not exist in merges, stay untouched. Any new items are
 added. Any string/number/similar values on both get replaced.
 
 As a specific example, if you have `component/kube/01-example.yaml` and

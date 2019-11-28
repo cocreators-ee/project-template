@@ -1,5 +1,6 @@
 import json
 import random
+from collections import defaultdict
 from pathlib import Path
 from shutil import copy
 from typing import List, Optional
@@ -36,6 +37,8 @@ RESTART_RESOURCES = ("Deployment", "DaemonSet", "StatefulSet")
 # How long to wait for any rollout to successfully complete before failing
 ROLLOUT_TIMEOUT = 5 * 60.0
 
+TEMPLATE_KINDS = {"merge", "override"}
+
 
 class Component:
     def __init__(self, path: str):
@@ -52,8 +55,8 @@ class Component:
         self.replicas = None
 
         self.kube_configs = self._get_kube_configs()
-        self.merge_templates = self._get_merge_templates()
         self.kube_merges = {}
+        self.kube_templates = self._get_kube_templates()
         self.obsolete_kube_configs = self._get_obsolete_kube_configs()
 
     def __str__(self):
@@ -95,7 +98,7 @@ class Component:
             run(["docker", "build", self.path, "-t", tag], stream=True)
 
     def patch_from_env(self, env):
-        env_path = Path("envs") / env / self.path.as_posix()
+        env_path = Path("envs") / env / "overrides" / self.path.as_posix()
         for match in (env_path / "kube").glob("*.yaml"):
             logger.info(f"Found kube override {match.name} for {self.name} in {env}")
             self.kube_configs[match.name] = match
@@ -105,16 +108,26 @@ class Component:
             logger.info(f"Found kube merges {match.name} for {self.name} in {env}")
             self.kube_merges[match.name] = match
 
-    def render_merge_templates(self, env, settings):
-        output_path = Path("envs") / env / "merges" / self.path.as_posix() / "kube"
+    def render_templates(self, env, settings):
+        rendered_files = []
+        for kind in TEMPLATE_KINDS:
+            rendered_files.extend(self.render_template_kind(kind, env, settings))
+        return rendered_files
 
-        # Remove all old rendered merge files, but leave any manually created ones
-        logger.info(f"Cleaning up old merge files for {self.name} for env {env}")
+    def render_template_kind(self, kind, env, settings):
+        plural_kind = f"{kind}s"
+        if kind not in TEMPLATE_KINDS:
+            raise Exception(f"Unsupported kind of template: {kind}")
+
+        output_path = Path("envs") / env / plural_kind / self.path.as_posix() / "kube"
+
+        # Remove all old rendered files of this kind, but leave any manually created ones
+        logger.info(f"Cleaning up old {kind} files for {self.name} for env {env}")
         old_files = output_path.glob("*.yaml")
         for old_file in old_files:
-            template_path = old_file.relative_to(Path("envs") / env / "merges")
+            template_path = old_file.relative_to(Path("envs") / env / plural_kind)
             template_path = (
-                template_path.parent / "merge-templates" / template_path.name
+                template_path.parent / f"{kind}-templates" / template_path.name
             )
 
             with old_file.open(mode="r", encoding="utf-8") as f:
@@ -124,21 +137,21 @@ class Component:
                 logger.debug(f"Deleted rendered file {old_file}")
             else:
                 logger.debug(
-                    f"Keeping merge file {old_file}, it does not appear to have been rendered from a template"
+                    f"Keeping {kind} file {old_file}, it does not appear to have been rendered from a template"
                 )
 
         jinja_context = getattr(settings, "TEMPLATE_VARIABLES", {})
         rendered_files = []
 
-        if not self.merge_templates:
+        if not self.kube_templates[kind]:
             return rendered_files
 
-        logger.info(f"Creating merge files for {self.name} for env {env}")
+        logger.info(f"Creating {kind} files for {self.name} for env {env}")
 
         if not output_path.is_dir():
             output_path.mkdir(mode=0o700, parents=True)
 
-        for name, template_path in self.merge_templates.items():
+        for name, template_path in self.kube_templates[kind].items():
             with template_path.open(mode="r", encoding="utf-8") as f:
                 content = f.read()
 
@@ -157,7 +170,7 @@ class Component:
             with output_file.open(mode="w", encoding="utf-8") as f:
                 f.write(content)
                 rendered_files.append(output_file)
-            logger.debug(f"Rendered merge file {output_file}")
+            logger.debug(f"Rendered {kind} file {output_file}")
 
         return rendered_files
 
@@ -401,16 +414,17 @@ class Component:
 
         return config
 
-    def _get_merge_templates(self, path=None):
+    def _get_kube_templates(self, path=None):
         if path is None:
             path = self.path
 
-        merge_templates = {}
-        for match in (path / "kube" / "merge-templates").glob("*.yaml"):
-            logger.info(f"Found merge-template {match.name} for {self.name}")
-            merge_templates[match.name] = match
+        templates = defaultdict(dict)
+        for kind in TEMPLATE_KINDS:
+            for match in (path / "kube" / f"{kind}-templates").glob("*.yaml"):
+                logger.info(f"Found {kind}-template {match.name} for {self.name}")
+                templates[kind][match.name] = match
 
-        return merge_templates
+        return templates
 
     def _get_obsolete_kube_configs(self, path=None):
         if path is None:

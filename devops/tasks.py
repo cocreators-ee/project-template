@@ -38,7 +38,7 @@ def update_from_templates(ctx):
 
         for path in components:
             component = Component(path)
-            rendered_files.extend(component.render_merge_templates(env, settings))
+            rendered_files.extend(component.render_templates(env, settings))
 
     return rendered_files
 
