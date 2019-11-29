@@ -1,15 +1,14 @@
 import json
 import re
-from subprocess import CalledProcessError  # nosec
 from os import environ
 from pathlib import Path
+from subprocess import CalledProcessError  # nosec
 from time import sleep
-
-from invoke import task, Context
 
 import devops.tasks
 from devops.lib.log import logger
-from devops.lib.utils import list_envs, big_label, label, run, load_env_settings
+from devops.lib.utils import big_label, label, list_envs, load_env_settings, run
+from invoke import Context, task
 
 ALL_COMPONENTS = ["service/pipeline-agent"]
 
@@ -239,7 +238,40 @@ def kubeval(ctx):
     run(["kubeval"] + kube_yamls)
 
 
-@task(pre=[kubeval])
+@task()
+def update_from_templates(ctx):
+    """
+    Update kube yaml merges from templates
+    :param Context ctx:
+    """
+    devops.tasks.update_from_templates(ctx)
+
+
+@task()
+def _update_from_templates_hook(ctx):
+    """
+    Update kube yaml merges from templates in a way that will work nicely with
+    pre-commit hooks.
+
+    :param Context ctx:
+    """
+    rendered_files = devops.tasks.update_from_templates(ctx)
+
+    result = run(["git", "status", "--untracked-files=all", "-s"])
+    untracked_files = result.stdout.decode(encoding="utf-8").split()
+    statuses = untracked_files[0::2]
+    files = untracked_files[1::2]
+    # Mapping from file path to git short status
+    untracked_files = {f: status for status, f in zip(statuses, files)}
+
+    for f in rendered_files:
+        if untracked_files.get(str(f)) == "??":
+            raise ValueError(
+                f"Rendered file {f} is untracked, use 'git add' to add it!"
+            )
+
+
+@task(pre=[_update_from_templates_hook, kubeval])
 def pre_commit(ctx):
     """
     Local pre-commit hook

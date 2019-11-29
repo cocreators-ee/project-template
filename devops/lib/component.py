@@ -1,14 +1,16 @@
 import json
 import random
+from collections import defaultdict
 from pathlib import Path
 from shutil import copy
 from typing import List, Optional
 
+import jinja2
 import yaml
-from invoke import Context
-
 from devops.lib.log import logger
-from devops.lib.utils import label, run, merge_docs
+from devops.lib.utils import label, merge_docs, run
+from devops.settings import TEMPLATE_HEADER
+from invoke import Context
 
 try:
     from yaml import CBaseLoader as BaseLoader, CLoader as Loader, CDumper as Dumper
@@ -35,6 +37,8 @@ RESTART_RESOURCES = ("Deployment", "DaemonSet", "StatefulSet")
 # How long to wait for any rollout to successfully complete before failing
 ROLLOUT_TIMEOUT = 5 * 60.0
 
+TEMPLATE_KINDS = {"merge", "override"}
+
 
 class Component:
     def __init__(self, path: str):
@@ -52,6 +56,7 @@ class Component:
 
         self.kube_configs = self._get_kube_configs()
         self.kube_merges = {}
+        self.kube_templates = self._get_kube_templates()
         self.obsolete_kube_configs = self._get_obsolete_kube_configs()
 
     def __str__(self):
@@ -93,7 +98,7 @@ class Component:
             run(["docker", "build", self.path, "-t", tag], stream=True)
 
     def patch_from_env(self, env):
-        env_path = Path("envs") / env / self.path.as_posix()
+        env_path = Path("envs") / env / "overrides" / self.path.as_posix()
         for match in (env_path / "kube").glob("*.yaml"):
             logger.info(f"Found kube override {match.name} for {self.name} in {env}")
             self.kube_configs[match.name] = match
@@ -102,6 +107,72 @@ class Component:
         for match in (merge_path / "kube").glob("*.yaml"):
             logger.info(f"Found kube merges {match.name} for {self.name} in {env}")
             self.kube_merges[match.name] = match
+
+    def render_templates(self, env, settings):
+        rendered_files = []
+        for kind in TEMPLATE_KINDS:
+            rendered_files.extend(self.render_template_kind(kind, env, settings))
+        return rendered_files
+
+    def render_template_kind(self, kind, env, settings):
+        plural_kind = f"{kind}s"
+        if kind not in TEMPLATE_KINDS:
+            raise Exception(f"Unsupported kind of template: {kind}")
+
+        output_path = Path("envs") / env / plural_kind / self.path.as_posix() / "kube"
+
+        # Remove all old rendered files of this kind, but leave any manually created ones
+        logger.info(f"Cleaning up old {kind} files for {self.name} for env {env}")
+        old_files = output_path.glob("*.yaml")
+        for old_file in old_files:
+            template_path = old_file.relative_to(Path("envs") / env / plural_kind)
+            template_path = (
+                template_path.parent / f"{kind}-templates" / template_path.name
+            )
+
+            with old_file.open(mode="r", encoding="utf-8") as f:
+                content = f.read()
+            if content.startswith(TEMPLATE_HEADER.format(file=template_path)):
+                old_file.unlink()
+                logger.debug(f"Deleted rendered file {old_file}")
+            else:
+                logger.debug(
+                    f"Keeping {kind} file {old_file}, it does not appear to have been rendered from a template"
+                )
+
+        jinja_context = getattr(settings, "TEMPLATE_VARIABLES", {})
+        rendered_files = []
+
+        if not self.kube_templates[kind]:
+            return rendered_files
+
+        logger.info(f"Creating {kind} files for {self.name} for env {env}")
+
+        if not output_path.is_dir():
+            output_path.mkdir(mode=0o700, parents=True)
+
+        for name, template_path in self.kube_templates[kind].items():
+            with template_path.open(mode="r", encoding="utf-8") as f:
+                content = f.read()
+
+            template = jinja2.Template(content, undefined=jinja2.StrictUndefined)
+            try:
+                content = TEMPLATE_HEADER.format(file=template_path)
+                content += template.render(jinja_context)
+                content += "\n"
+            except jinja2.exceptions.UndefinedError as ex:
+                raise Exception(
+                    f"Failed to render template {template_path} for env {env}, "
+                    f"reason: {ex.message}"
+                )
+
+            output_file = output_path / name
+            with output_file.open(mode="w", encoding="utf-8") as f:
+                f.write(content)
+                rendered_files.append(output_file)
+            logger.debug(f"Rendered {kind} file {output_file}")
+
+        return rendered_files
 
     def release(
         self, ctx: Context, rel_path: Path, dry_run: bool, no_rollout_wait: bool
@@ -342,6 +413,18 @@ class Component:
             config[match.name] = match
 
         return config
+
+    def _get_kube_templates(self, path=None):
+        if path is None:
+            path = self.path
+
+        templates = defaultdict(dict)
+        for kind in TEMPLATE_KINDS:
+            for match in (path / "kube" / f"{kind}-templates").glob("*.yaml"):
+                logger.info(f"Found {kind}-template {match.name} for {self.name}")
+                templates[kind][match.name] = match
+
+        return templates
 
     def _get_obsolete_kube_configs(self, path=None):
         if path is None:
