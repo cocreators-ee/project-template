@@ -8,7 +8,6 @@ from time import time
 from typing import Callable, List, Optional, Union
 
 import yaml
-
 from devops.lib.log import logger
 
 
@@ -80,7 +79,7 @@ def run(
     try:
         res = subprocess.run(args, **kwargs)  # nosec
     except subprocess.CalledProcessError as e:
-        logger.error("Failed to run" + " ".join(args))
+        logger.error("Failed to run " + " ".join(args))
         log_subprocess_output(e, logger.error)
         logger.error(f"  ✘ ... failed in {time() - start:.3f}s")
         raise
