@@ -381,7 +381,7 @@ class Component:
 
     def _patch_replicas(self, doc: dict):
         spec = doc["spec"]
-        if self.replicas and spec.get("replicas", None) is not None:
+        if self.replicas:
             spec["replicas"] = self.replicas
 
     def _patch_image_pull_secrets(self, doc: dict):
