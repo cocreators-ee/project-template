@@ -183,7 +183,10 @@ def merge_docs(src: List[dict], overrides: List[dict]):
                     res[key] = doc[key]
                 elif type(overrides[key]) in (str, int, bool, float, complex):
                     # Simply overridden values
-                    res[key] = _basevalue_to_value(overrides[key], path)
+                    if type(_basevalue_to_value(overrides[key], path)) == int:
+                        res[key] = _basevalue_to_value(overrides[key], path)
+                    else:
+                        res[key] = str(_basevalue_to_value(overrides[key], path))
                 elif key not in doc:
                     # Added values
                     res[key] = _nest(None, overrides[key], f"{path}.{key}")
