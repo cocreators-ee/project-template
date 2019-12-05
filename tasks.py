@@ -5,6 +5,7 @@ from pathlib import Path
 from subprocess import CalledProcessError  # nosec
 from time import sleep
 
+import devops.settings
 import devops.tasks
 from devops.lib.log import logger
 from devops.lib.utils import big_label, label, list_envs, load_env_settings, run
@@ -220,13 +221,6 @@ def kubeval(ctx):
         if s.startswith("temp"):
             return True
 
-        # Sealed Secrets has validation issues
-        if path.name == "01-sealed-secrets-controller.yaml":
-            return True
-
-        if "apiVersion: bitnami.com/v1alpha1" in path.read_text():
-            return True
-
         return False
 
     kube_yamls = [
@@ -235,7 +229,9 @@ def kubeval(ctx):
         if not _should_ignore(path)
     ]
 
-    run(["kubeval"] + kube_yamls)
+    skip_kinds = ",".join(devops.settings.KUBEVAL_SKIP_KINDS)
+
+    run(["kubeval", "--skip-kinds", skip_kinds] + kube_yamls)
 
 
 @task()
