@@ -9,7 +9,7 @@ import jinja2
 import yaml
 from devops.lib.log import logger
 from devops.lib.utils import label, merge_docs, run
-from devops.settings import TEMPLATE_HEADER
+from devops.settings import KUBEVAL_SKIP_KINDS, TEMPLATE_HEADER
 from invoke import Context
 
 try:
@@ -76,9 +76,11 @@ class Component:
         if not ctx:
             return
 
+        skip_kinds = ",".join(KUBEVAL_SKIP_KINDS)
+
         for file in self.kube_configs:
             path = self.kube_configs[file]
-            result = run(["kubeval", path])
+            result = run(["kubeval", "--skip-kinds", skip_kinds, path])
             if result.returncode > 0:
                 raise ValidationError(f"Validation failed for {path}")
 
