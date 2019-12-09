@@ -128,6 +128,17 @@ def init_kubernetes(ctx, env):
     settings = load_env_settings(env)
     devops.tasks.ensure_context(settings.KUBE_CONTEXT)
 
+    def _get_kube_files(kube_context):
+        kube_files = {f.name: f for f in Path("kube").glob("*.yaml")}
+
+        overrides = (Path("kube") / "overrides" / kube_context).glob("*.yaml")
+        for f in overrides:
+            kube_files[f.name] = f
+
+        # Convert to sorted list
+        kube_files = [kube_files[name] for name in sorted(kube_files.keys())]
+        return kube_files
+
     def _apply(config, **kwargs):
         run(["kubectl", "apply", "-f", config], **kwargs)
 
@@ -139,7 +150,7 @@ def init_kubernetes(ctx, env):
             logger.info(f"Applying Sealed Secrets master key from {master_key}")
             _apply(master_key, check=False)
 
-    for c in Path("kube").glob("*.yaml"):
+    for c in _get_kube_files(settings.KUBE_CONTEXT):
         _apply(c)
 
     # Wait for Sealed Secrets -controller to start up
