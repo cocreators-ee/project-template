@@ -126,56 +126,43 @@ def big_label(fn, text: str):
     fn("")
 
 
-def merge_docs(src: List[dict], overrides: List[dict]):
+def merge_docs(
+    src: List[dict], overrides: List[dict], base_overrides: List[dict]
+) -> List[dict]:
     """
     Merges Yaml documents.
 
-    You need to load the src documents using yaml.Loader and overrides with
-    yaml.BaseLoader for this to work properly.
+    You need to load the source documents using yaml.Loader (src). The overriding
+    documents needs to be loaded with both yaml.Loader (overrides) and yaml.BaseLoader
+    (base_overrides) for this to work properly.
 
-    :param src:
-    :param overrides:
-    :return dict: New dictionary of merged values
+    :param src: The source documents loaded with yaml.Loader.
+    :param overrides: The override documents loaded with yaml.Loader. Contains the
+    values with the actual types.
+    :param base_overrides: The override documents loaded with yaml.BaseLoader.
+    Contains the literal values, e.g. the tilde (~) as a literal, instead of None.
+    :return: New list of merged values
     """
     docs = deepcopy(src)
 
-    # Yaml "FullLoader" that can parse all the values to their normal types in Python
-    loader = yaml.Loader(StringIO(""))
-
-    def _basevalue_to_value(value: str, path: str):
-        """
-        Parse string values such as `5` to the expected Python types
-        :param str value: Value to parse
-        :param str path: For debugging, path in the yaml tree
-        :return: Parsed value
-        """
-        tag = loader.resolve(yaml.ScalarNode, value, (True, False))
-        node = yaml.ScalarNode(tag, value)
-        resolved = loader.construct_object(node, True)
-
-        #  if resolved != value:
-        #    print(f"{path} {type(value)}: {value} -> {type(resolved)}: {resolved}")
-
-        return resolved
-
-    def _merge_part(doc, overrides, path=""):
+    def _merge_part(doc, overrides, base_overrides, path=""):
         """
         Merge the trees - recursive part of logic
         """
 
-        def _nest(_doc, _overrides, _path):
+        def _nest(_doc, _overrides, _base_overrides, _path):
             """
             Support nesting even when original doc ran out of matching data
             """
             if _doc is None:
                 _doc = type(_overrides)()
 
-            return _merge_part(_doc, _overrides, _path)
+            return _merge_part(_doc, _overrides, _base_overrides, _path)
 
         if type(doc) == dict:
             res = {}
-            for key in overrides:
-                if overrides[key] == "~":
+            for key in base_overrides:
+                if base_overrides[key] == "~":
                     # Remove these from target
                     pass
                 elif overrides[key] == "":
@@ -183,13 +170,17 @@ def merge_docs(src: List[dict], overrides: List[dict]):
                     res[key] = doc[key]
                 elif type(overrides[key]) in (str, int, bool, float, complex):
                     # Simply overridden values
-                    res[key] = _basevalue_to_value(overrides[key], path)
+                    res[key] = overrides[key]
                 elif key not in doc:
                     # Added values
-                    res[key] = _nest(None, overrides[key], f"{path}.{key}")
+                    res[key] = _nest(
+                        None, overrides[key], base_overrides[key], f"{path}.{key}"
+                    )
                 else:
                     # Nesting
-                    res[key] = _nest(doc[key], overrides[key], f"{path}.{key}")
+                    res[key] = _nest(
+                        doc[key], overrides[key], base_overrides[key], f"{path}.{key}"
+                    )
 
                 # Remove all overridden values from source doc so we can later just
                 # copy the remaining values over
@@ -202,27 +193,39 @@ def merge_docs(src: List[dict], overrides: List[dict]):
             return res
         elif type(doc) == list:
             res = []
-            for idx, value_override in enumerate(overrides):
+            for idx, base_value_override in enumerate(base_overrides):
+                value_override = overrides[idx]
                 if idx > len(doc) - 1:
                     # Added values
-                    if isinstance(value_override, types.GeneratorType):
-                        res.append(_nest(None, value_override, f"{path}[{idx}]"))
+                    if isinstance(base_value_override, types.GeneratorType):
+                        res.append(
+                            _nest(
+                                None,
+                                value_override,
+                                base_value_override,
+                                f"{path}[{idx}]",
+                            )
+                        )
                     else:
                         res.append(value_override)
                     continue
 
                 value = doc[idx]
-                if value_override == "~":
+                if base_value_override == "~":
                     # Remove these from target
                     continue
-                elif value_override == "":
+                elif base_value_override == "":
                     # Use original value
                     res.append(value)
                 elif type(value_override) in (str, int, bool, float, complex):
                     # Simply overridden values
-                    res.append(_basevalue_to_value(value_override, path))
+                    res.append(value_override)
                 else:
-                    res.append(_nest(value, value_override, f"{path}[{idx}]"))
+                    res.append(
+                        _nest(
+                            value, value_override, base_value_override, f"{path}[{idx}]"
+                        )
+                    )
 
             if len(doc) > len(overrides):
                 for item in doc[len(overrides) :]:
@@ -233,6 +236,6 @@ def merge_docs(src: List[dict], overrides: List[dict]):
             raise NotImplementedError(f"Dunno how to merge {type(doc)}")
 
     for i, doc in enumerate(docs):
-        docs[i] = _merge_part(doc, overrides[i])
+        docs[i] = _merge_part(doc, overrides[i], base_overrides[i])
 
     return docs
