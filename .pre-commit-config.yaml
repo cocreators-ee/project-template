@@ -29,4 +29,5 @@ repos:
         name: Invoke pre-commit task
         entry: local-precommit-hook
         language: script
+        pass_filenames: false
         files: \.(yaml)$  # Add more types when relevant
