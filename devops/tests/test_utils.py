@@ -67,6 +67,9 @@ spec:
         - name: second-container
           imagePullPolicy: IfNotPresent
           image: second-container:latest
+        - name: third-container
+          imagePullPolicy: Never
+          image: third-container:latest
       volumes:
         - name: some-data
           persistentVolumeClaim:
@@ -78,6 +81,7 @@ MERGE_CHANGES = """
 ---
 data:
   MY_SETTING: "bar"
+  DEBUG: 'True'
 ---
 spec:
   template:
@@ -87,6 +91,8 @@ spec:
         - volumeMounts:
             - mountPath: /var/run/docker.sock
               name: docker-volume
+        - securityContext:
+            allowPrivilegeEscalation: true
       volumes:
         - persistentVolumeClaim: ~
         - name: docker-volume
@@ -108,6 +114,7 @@ metadata:
   name: myproj-settings
 data:
   MY_SETTING: "bar"
+  DEBUG: 'True'
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -133,6 +140,11 @@ spec:
           volumeMounts:
             - mountPath: /var/run/docker.sock
               name: docker-volume
+        - name: third-container
+          imagePullPolicy: Never
+          image: third-container:latest
+          securityContext:
+            allowPrivilegeEscalation: true
       volumes:
         - name: some-data
         - name: docker-volume
@@ -282,10 +294,11 @@ def test_run():
 
 def test_kube_merge():
     docs = list(yaml.load_all(StringIO(MERGE_TEST), yaml.Loader))
-    overrides = list(yaml.load_all(StringIO(MERGE_CHANGES), yaml.BaseLoader))
+    overrides = list(yaml.load_all(StringIO(MERGE_CHANGES), yaml.Loader))
+    base_overrides = list(yaml.load_all(StringIO(MERGE_CHANGES), yaml.BaseLoader))
     expected = list(yaml.load_all(StringIO(MERGE_EXPECTED), yaml.Loader))
 
-    merged = merge_docs(docs, overrides)
+    merged = merge_docs(docs, overrides, base_overrides)
     for i, merged_doc in enumerate(merged):
         expected_doc = expected[i]
 
@@ -300,10 +313,13 @@ def test_kube_merge():
 
 def test_readme_kube_merge():
     docs = list(yaml.load_all(StringIO(README_MERGE_SRC), yaml.Loader))
-    overrides = list(yaml.load_all(StringIO(README_MERGE_OVERRIDE), yaml.BaseLoader))
+    overrides = list(yaml.load_all(StringIO(README_MERGE_OVERRIDE), yaml.Loader))
+    base_overrides = list(
+        yaml.load_all(StringIO(README_MERGE_OVERRIDE), yaml.BaseLoader)
+    )
     expected = list(yaml.load_all(StringIO(README_MERGE_EXPECTED), yaml.Loader))
 
-    merged = merge_docs(docs, overrides)
+    merged = merge_docs(docs, overrides, base_overrides)
     for i, merged_doc in enumerate(merged):
         expected_doc = expected[i]
 

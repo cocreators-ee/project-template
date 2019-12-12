@@ -309,9 +309,13 @@ class Component:
             self._patch_yaml_docs(docs)
 
             if config in self.kube_merges:
+                # Use the Loader to get the values with the actual types.
                 with self.kube_merges[config].open("r") as f:
-                    overrides = list(yaml.load_all(f, BaseLoader))
-                docs = merge_docs(docs, overrides)
+                    overrides = list(yaml.load_all(f, Loader))
+                # Use the BaseLoader to get literal values, such as tilde (~).
+                with self.kube_merges[config].open("r") as f:
+                    base_overrides = list(yaml.load_all(f, BaseLoader))
+                docs = merge_docs(docs, overrides, base_overrides)
 
             dst_path = kube_dst / config
             with dst_path.open("w") as config_dst:
