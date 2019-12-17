@@ -1,5 +1,6 @@
 import json
 import re
+from contextlib import contextmanager
 from os import environ
 from pathlib import Path
 from subprocess import CalledProcessError  # nosec
@@ -26,10 +27,11 @@ validate_release_configs = task(devops.tasks.validate_release_configs)
     iterable=["component"],
     help={
         "component": "The components to build - if none given defaults to: "
-        + ", ".join(ALL_COMPONENTS)
+        + ", ".join(ALL_COMPONENTS),
+        "dry_run": "Do not perform any changes, just generate configs and log what would be done",
     },
 )
-def build_images(ctx, component):
+def build_images(ctx, component, dry_run):
     if not component:
         components = ALL_COMPONENTS
     else:
@@ -40,7 +42,22 @@ def build_images(ctx, component):
             'DOCKER_HOST not set, if you get an error you might be missing something like "minikube start"'
         )
 
-    devops.tasks.build_images(ctx, components)
+    with build_images_context(components, dry_run):
+        devops.tasks.build_images(ctx, components, dry_run)
+
+
+@contextmanager
+def build_images_context(components, dry_run):
+    """
+    Context manager for building images.
+
+    To be extended as needed, e.g. copy files to be visible for Dockerfile
+    during the build and clean up them afterwards.
+
+    :param list components: The components to be built.
+    :param bool dry_run: True if it's a dry run.
+    """
+    yield
 
 
 @task(
@@ -69,13 +86,18 @@ def release(
     keep_configs=False,
     no_rollout_wait=False,
 ):
+    if not component:
+        components = ALL_COMPONENTS
+    else:
+        components = [c.strip() for cs in component for c in cs.split(",")]
+
     if build:
-        devops.tasks.build_images(ctx, component, dry_run)
+        build_images(ctx, components, dry_run)
 
     devops.tasks.release(
         ctx,
         env,
-        component,
+        components,
         image,
         tag,
         replicas,
