@@ -57,7 +57,13 @@ def build_images_context(components, dry_run):
     :param list components: The components to be built.
     :param bool dry_run: True if it's a dry run.
     """
-    yield
+
+    # Setup
+    try:
+        yield
+    finally:
+        # Teardown
+        pass
 
 
 @task(
