@@ -9,7 +9,7 @@ import jinja2
 import yaml
 from devops.lib.log import logger
 from devops.lib.utils import label, merge_docs, run
-from devops.settings import KUBEVAL_SKIP_KINDS, TEMPLATE_HEADER
+from devops.settings import IMAGE_PREFIX, KUBEVAL_SKIP_KINDS, TEMPLATE_HEADER
 from invoke import Context
 
 try:
@@ -46,7 +46,7 @@ class Component:
         self.context = None
         self.image_pull_secrets = {}
         self.image = None
-        self.image_prefix = ""
+        self.image_prefix = IMAGE_PREFIX
         self.name = self._path_to_name(path)
         self.namespace = None
         self.orig_path = Path(path)
@@ -468,11 +468,15 @@ class Component:
 
         return self._resources
 
-    def _get_full_docker_name(self) -> str:
+    def get_docker_repository(self):
         prefix = self.image_prefix
         image = self.name
+        return f"{prefix}{image}"
+
+    def _get_full_docker_name(self) -> str:
+        docker_repository = self.get_docker_repository()
         tag = self.tag
-        return f"{prefix}{image}:{tag}"
+        return f"{docker_repository}:{tag}"
 
     @staticmethod
     def _get_resource_name(doc: dict) -> str:

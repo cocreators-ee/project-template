@@ -1,7 +1,6 @@
 from io import StringIO
 
 import yaml
-
 from devops.lib.component import Component
 
 DEPLOYMENT = """
@@ -30,8 +29,19 @@ def get_deployment() -> dict:
     return yaml.load(StringIO(DEPLOYMENT), yaml.Loader)
 
 
+def test_get_docker_repository():
+    c = Component("service/test-service")
+    c.image_prefix = ""
+    assert c.get_docker_repository() == f"service-test-service"
+
+    c = Component("service/test-service")
+    c.image_prefix = "myproj-"
+    assert c.get_docker_repository() == f"myproj-service-test-service"
+
+
 def test_get_full_docker_name():
     c = Component("service/test-service")
+    c.image_prefix = ""
     assert c._get_full_docker_name() == "service-test-service:latest"
 
     c = Component("service/test-service")
@@ -43,6 +53,7 @@ def test_get_full_docker_name():
 def test_patch_containers():
     deploy = get_deployment()
     c = Component("service/test-service")
+    c.image_prefix = ""
     c.image = "test-image"
     c.tag = "v6.6.6"
     c._patch_containers(deploy)
