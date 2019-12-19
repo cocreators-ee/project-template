@@ -382,6 +382,9 @@ poetry run invoke release <env> \
 # Build a specific component
 poetry run invoke build-images --component service/pipeline-agent
 
+# Pass build args
+poetry run invoke build-images --component service/pipeline-agent --docker-args=foo=bar --docker-args=boo=far ...
+
 # Clean up the Azure Container Registry, name is from <name>.azurecr.io
 poetry run invoke cleanup-registry <name>
 ```
