@@ -19,11 +19,14 @@ def generate_release_id() -> str:
     return "".join(random.choice(chars) for _ in range(length))  # nosec
 
 
-def build_images(ctx, components, dry_run=False):
-    big_label(logger.info, "Building images")
+def build_images(ctx, components, dry_run=False, docker_args=None):
+    if docker_args is None:
+        docker_args = []
+
+    big_label(logger.info, f"Building images with args {docker_args}")
     for c in components:
         component = Component(c)
-        component.build(ctx, dry_run)
+        component.build(ctx, dry_run, docker_args)
 
 
 def update_from_templates(ctx):
