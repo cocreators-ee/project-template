@@ -27,13 +27,13 @@ validate_release_configs = task(devops.tasks.validate_release_configs)
     iterable=["component", "docker_args"],
     help={
         "component": "The components to build - if none given defaults to: "
-        + ", ".join(ALL_COMPONENTS),
+                     + ", ".join(ALL_COMPONENTS),
         "dry_run": "Do not perform any changes, just generate configs and log what would be done",
         "docker_args": (
                 "Arguments to build docker images. "
                 + "Passed as --build-arg to docker build. If you want to"
-                + " build several components, pass them as "
-                + "separate arguments"
+                + " pass several build argument, pass each of them as a "
+                + "separate argument"
         ),
     },
 )
@@ -47,9 +47,6 @@ def build_images(ctx, component, dry_run, docker_args=None):
         logger.warn(
             'DOCKER_HOST not set, if you get an error you might be missing something like "minikube start"'
         )
-
-    if not docker_args:
-        docker_args = []
 
     with build_images_context(components, dry_run):
         devops.tasks.build_images(ctx, components, dry_run, docker_args)

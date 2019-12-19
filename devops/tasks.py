@@ -20,9 +20,6 @@ def generate_release_id() -> str:
 
 
 def build_images(ctx, components, dry_run=False, docker_args=None):
-    if docker_args is None:
-        docker_args = []
-
     big_label(logger.info, f"Building images with args {docker_args}")
     for c in components:
         component = Component(c)
