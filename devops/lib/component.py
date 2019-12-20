@@ -84,7 +84,7 @@ class Component:
             if result.returncode > 0:
                 raise ValidationError(f"Validation failed for {path}")
 
-    def build(self, ctx: Context, dry_run=False):
+    def build(self, ctx: Context, dry_run=False, docker_args=None):
         label(logger.info, f"Building {self.path}")
         dockerfile = self.path / "Dockerfile"
 
@@ -92,12 +92,24 @@ class Component:
             logger.info(f"No Dockerfile for {self.name} component")
             return
 
+        if isinstance(docker_args, list):
+            # Insert --build-arg before each item in docker_args.
+            docker_args = [["--build-arg", docker_arg] for docker_arg in
+                           docker_args]
+            # Flatten list
+            # build_args_pair is ["--build-arg", "foo=bar"]
+            docker_args = [arg for build_args_pair in docker_args for arg in
+                           build_args_pair]
+        else:
+            docker_args = []
+
         if dry_run:
             logger.info(f"[DRY RUN] Building {self.name} Docker image")
         else:
             logger.info(f"Building {self.name} Docker image")
             tag = self._get_full_docker_name()
-            run(["docker", "build", self.path, "-t", tag], stream=True)
+            run(["docker", "build", *docker_args, self.path, "-t", tag],
+                stream=True)
 
     def patch_from_env(self, env):
         env_path = Path("envs") / env / "overrides" / self.path.as_posix()

@@ -24,14 +24,18 @@ validate_release_configs = task(devops.tasks.validate_release_configs)
 
 
 @task(
-    iterable=["component"],
+    iterable=["component", "docker_args"],
     help={
         "component": "The components to build - if none given defaults to: "
-        + ", ".join(ALL_COMPONENTS),
+                     + ", ".join(ALL_COMPONENTS),
         "dry_run": "Do not perform any changes, just generate configs and log what would be done",
+        "docker_args": (
+                "Arguments to build docker imaages --docker-args foo=bar. "
+                + "Repeat for multiple build arguments."
+        ),
     },
 )
-def build_images(ctx, component, dry_run):
+def build_images(ctx, component, dry_run, docker_args=None):
     if not component:
         components = ALL_COMPONENTS
     else:
@@ -43,7 +47,7 @@ def build_images(ctx, component, dry_run):
         )
 
     with build_images_context(components, dry_run):
-        devops.tasks.build_images(ctx, components, dry_run)
+        devops.tasks.build_images(ctx, components, dry_run, docker_args)
 
 
 @contextmanager
