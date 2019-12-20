@@ -30,10 +30,8 @@ validate_release_configs = task(devops.tasks.validate_release_configs)
                      + ", ".join(ALL_COMPONENTS),
         "dry_run": "Do not perform any changes, just generate configs and log what would be done",
         "docker_args": (
-                "Arguments to build docker images. "
-                + "Passed as --build-arg to docker build. If you want to"
-                + " pass several build argument, pass each of them as a "
-                + "separate argument"
+                "Arguments to build docker imaages --docker-args foo=bar. "
+                + "Repeat for multiple build arguments."
         ),
     },
 )
