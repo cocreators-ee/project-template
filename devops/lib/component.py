@@ -94,10 +94,12 @@ class Component:
 
         if isinstance(docker_args, list):
             # Insert --build-arg before each item in docker_args.
-            docker_args = [["--build-arg", docker_arg] if docker_arg else "" for docker_arg in docker_args]
+            docker_args = [["--build-arg", docker_arg] for docker_arg in
+                           docker_args]
             # Flatten list
             # build_args_pair is ["--build-arg", "foo=bar"]
-            docker_args = [arg for build_args_pair in docker_args for arg in build_args_pair]
+            docker_args = [arg for build_args_pair in docker_args for arg in
+                           build_args_pair]
         else:
             docker_args = []
 
