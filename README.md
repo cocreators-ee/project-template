@@ -422,6 +422,24 @@ az role assignment create --assignee $CLIENT_ID --role acrpull --scope $ACR_ID
 kubectl create clusterrolebinding kubernetes-dashboard -n kube-system --clusterrole=cluster-admin --serviceaccount=kube-system:kubernetes-dashboard
 ```
 
+3. Run the init-kubernetes task:
+```bash
+poetry run invoke init-kubernetes <env>
+```
+This will apply the `*.yaml` files found under the `kube` directory.
+By default these include the sealed secrets controller and kured.
+You should preferably run this task from your local machine, as the task will
+also fetch the public key for the sealed secrets for the cluster and store it
+under `envs/<env>/secrets.pem` and you most likely want to commit that to the
+repository to make it easy to add new secrets.
+
+If you need to override any of the files from `kube/*.yaml` for some cluster,
+you can do that by adding an identically named file in `kube/overrides/<kube_context>/*.yaml`.
+The `<kube_context>` should match the `KUBE_CONTEXT` value defined in `envs/<env>/settings.py`.
+This approach can for example be used to customize the `KURED_SLACK_NAME` for each cluster by making
+a cluster/context specific override of the `02-kured.yaml` file.
+You can also add a totally new file in the overrides folder, with no corresponding file in `kube/*.yaml`,
+if there's no default version of the file.
 
 ## Important information
 
