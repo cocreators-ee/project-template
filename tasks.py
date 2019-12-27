@@ -29,10 +29,8 @@ validate_release_configs = task(devops.tasks.validate_release_configs)
         "component": "The components to build - if none given defaults to: "
         + ", ".join(ALL_COMPONENTS),
         "dry_run": "Do not perform any changes, just generate configs and log what would be done",
-        "docker_args": (
-            "Arguments to build docker images --docker-args foo=bar. "
-            + "Repeat for multiple build arguments."
-        ),
+        "docker_args": "Arguments to build docker images --docker-args foo=bar. "
+        + "Repeat for multiple build arguments.",
     },
 )
 def build_images(ctx, component, dry_run=False, docker_args=None):
