@@ -30,4 +30,4 @@ repos:
         entry: local-precommit-hook
         language: script
         pass_filenames: false
-        files: \.(yaml)$  # Add more types when relevant
+        files: (\.(yaml)$|envs\/.*\/settings\.py$)  # Add more types when relevant
