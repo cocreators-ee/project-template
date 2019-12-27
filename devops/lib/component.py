@@ -92,24 +92,18 @@ class Component:
             logger.info(f"No Dockerfile for {self.name} component")
             return
 
-        if isinstance(docker_args, list):
-            # Insert --build-arg before each item in docker_args.
-            docker_args = [["--build-arg", docker_arg] for docker_arg in
-                           docker_args]
-            # Flatten list
-            # build_args_pair is ["--build-arg", "foo=bar"]
-            docker_args = [arg for build_args_pair in docker_args for arg in
-                           build_args_pair]
-        else:
-            docker_args = []
+        build_args = []
+        if docker_args:
+            # Insert --build-arg before each item from docker_args.
+            for docker_arg in docker_args:
+                build_args.extend(["--build-arg", docker_arg])
 
         if dry_run:
             logger.info(f"[DRY RUN] Building {self.name} Docker image")
         else:
             logger.info(f"Building {self.name} Docker image")
             tag = self._get_full_docker_name()
-            run(["docker", "build", *docker_args, self.path, "-t", tag],
-                stream=True)
+            run(["docker", "build", *build_args, self.path, "-t", tag], stream=True)
 
     def patch_from_env(self, env):
         env_path = Path("envs") / env / "overrides" / self.path.as_posix()
