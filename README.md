@@ -434,7 +434,7 @@ under `envs/<env>/secrets.pem` and you most likely want to commit that to the
 repository to make it easy to add new secrets.
 
 If you need to override any of the files from `kube/*.yaml` for some cluster,
-you can do that by adding an identically named file in `kube/overrides/<kube_context>/*.yaml`.
+you can do that by adding an identically named file in `kube/<kube_context>/overrides/*.yaml`.
 The `<kube_context>` should match the `KUBE_CONTEXT` value defined in `envs/<env>/settings.py`.
 This approach can for example be used to customize the `KURED_SLACK_NAME` for each cluster by making
 a cluster/context specific override of the `02-kured.yaml` file.

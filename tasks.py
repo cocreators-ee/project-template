@@ -131,7 +131,7 @@ def init_kubernetes(ctx, env):
     def _get_kube_files(kube_context):
         kube_files = {f.name: f for f in Path("kube").glob("*.yaml")}
 
-        overrides = (Path("kube") / "overrides" / kube_context).glob("*.yaml")
+        overrides = (Path("kube") / kube_context / "overrides").glob("*.yaml")
         for f in overrides:
             kube_files[f.name] = f
 
