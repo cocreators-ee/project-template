@@ -29,4 +29,5 @@ repos:
         name: Invoke pre-commit task
         entry: local-precommit-hook
         language: script
-        files: \.(yaml)$  # Add more types when relevant
+        pass_filenames: false
+        files: (\.(yaml)$|envs\/.*\/settings\.py$)  # Add more types when relevant

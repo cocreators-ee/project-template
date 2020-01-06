@@ -9,7 +9,7 @@ import jinja2
 import yaml
 from devops.lib.log import logger
 from devops.lib.utils import label, merge_docs, run
-from devops.settings import TEMPLATE_HEADER
+from devops.settings import IMAGE_PREFIX, KUBEVAL_SKIP_KINDS, TEMPLATE_HEADER
 from invoke import Context
 
 try:
@@ -46,7 +46,7 @@ class Component:
         self.context = None
         self.image_pull_secrets = {}
         self.image = None
-        self.image_prefix = ""
+        self.image_prefix = IMAGE_PREFIX
         self.name = self._path_to_name(path)
         self.namespace = None
         self.orig_path = Path(path)
@@ -76,13 +76,15 @@ class Component:
         if not ctx:
             return
 
+        skip_kinds = ",".join(KUBEVAL_SKIP_KINDS)
+
         for file in self.kube_configs:
             path = self.kube_configs[file]
-            result = run(["kubeval", path])
+            result = run(["kubeval", "--skip-kinds", skip_kinds, path])
             if result.returncode > 0:
                 raise ValidationError(f"Validation failed for {path}")
 
-    def build(self, ctx: Context, dry_run=False):
+    def build(self, ctx: Context, dry_run=False, docker_args=None):
         label(logger.info, f"Building {self.path}")
         dockerfile = self.path / "Dockerfile"
 
@@ -90,12 +92,18 @@ class Component:
             logger.info(f"No Dockerfile for {self.name} component")
             return
 
+        build_args = []
+        if docker_args:
+            # Insert --build-arg before each item from docker_args.
+            for docker_arg in docker_args:
+                build_args.extend(["--build-arg", docker_arg])
+
         if dry_run:
             logger.info(f"[DRY RUN] Building {self.name} Docker image")
         else:
             logger.info(f"Building {self.name} Docker image")
             tag = self._get_full_docker_name()
-            run(["docker", "build", self.path, "-t", tag], stream=True)
+            run(["docker", "build", *build_args, self.path, "-t", tag], stream=True)
 
     def patch_from_env(self, env):
         env_path = Path("envs") / env / "overrides" / self.path.as_posix()
@@ -307,9 +315,13 @@ class Component:
             self._patch_yaml_docs(docs)
 
             if config in self.kube_merges:
+                # Use the Loader to get the values with the actual types.
                 with self.kube_merges[config].open("r") as f:
-                    overrides = list(yaml.load_all(f, BaseLoader))
-                docs = merge_docs(docs, overrides)
+                    overrides = list(yaml.load_all(f, Loader))
+                # Use the BaseLoader to get literal values, such as tilde (~).
+                with self.kube_merges[config].open("r") as f:
+                    base_overrides = list(yaml.load_all(f, BaseLoader))
+                docs = merge_docs(docs, overrides, base_overrides)
 
             dst_path = kube_dst / config
             with dst_path.open("w") as config_dst:
@@ -381,7 +393,7 @@ class Component:
 
     def _patch_replicas(self, doc: dict):
         spec = doc["spec"]
-        if self.replicas and spec.get("replicas", None) is not None:
+        if self.replicas:
             spec["replicas"] = self.replicas
 
     def _patch_image_pull_secrets(self, doc: dict):
@@ -462,11 +474,15 @@ class Component:
 
         return self._resources
 
-    def _get_full_docker_name(self) -> str:
+    def get_docker_repository(self):
         prefix = self.image_prefix
         image = self.name
+        return f"{prefix}{image}"
+
+    def _get_full_docker_name(self) -> str:
+        docker_repository = self.get_docker_repository()
         tag = self.tag
-        return f"{prefix}{image}:{tag}"
+        return f"{docker_repository}:{tag}"
 
     @staticmethod
     def _get_resource_name(doc: dict) -> str:

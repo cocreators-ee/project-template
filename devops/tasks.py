@@ -7,7 +7,6 @@ from typing import List
 from devops.lib.component import Component
 from devops.lib.log import logger
 from devops.lib.utils import big_label, label, list_envs, load_env_settings, run
-from devops.settings import IMAGE_PREFIX
 from invoke import Context
 
 RELEASE_TMP = Path("temp")
@@ -20,12 +19,12 @@ def generate_release_id() -> str:
     return "".join(random.choice(chars) for _ in range(length))  # nosec
 
 
-def build_images(ctx, components, dry_run=False):
-    big_label(logger.info, "Building images")
+def build_images(ctx, components, dry_run=False, docker_args=None):
+    big_label(logger.info,
+              f"Building images{f' with args: {docker_args}' if docker_args else ''}")
     for c in components:
         component = Component(c)
-        component.image_prefix = IMAGE_PREFIX
-        component.build(ctx, dry_run)
+        component.build(ctx, dry_run, docker_args)
 
 
 def update_from_templates(ctx):
@@ -182,7 +181,6 @@ def release(
             component.replicas = settings.REPLICAS[path]
             replica_counts.pop(path, None)
 
-        component.image_prefix = IMAGE_PREFIX
         component.namespace = settings.KUBE_NAMESPACE
         component.context = settings.KUBE_CONTEXT
         component.image_pull_secrets = settings.IMAGE_PULL_SECRETS

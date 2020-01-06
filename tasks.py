@@ -1,10 +1,12 @@
 import json
 import re
+from contextlib import contextmanager
 from os import environ
 from pathlib import Path
 from subprocess import CalledProcessError  # nosec
 from time import sleep
 
+import devops.settings
 import devops.tasks
 from devops.lib.log import logger
 from devops.lib.utils import big_label, label, list_envs, load_env_settings, run
@@ -22,13 +24,16 @@ validate_release_configs = task(devops.tasks.validate_release_configs)
 
 
 @task(
-    iterable=["component"],
+    iterable=["component", "docker_args"],
     help={
         "component": "The components to build - if none given defaults to: "
-        + ", ".join(ALL_COMPONENTS)
+        + ", ".join(ALL_COMPONENTS),
+        "dry_run": "Do not perform any changes, just generate configs and log what would be done",
+        "docker_args": "Arguments to build docker images --docker-args foo=bar. "
+        + "Repeat for multiple build arguments.",
     },
 )
-def build_images(ctx, component):
+def build_images(ctx, component, dry_run=False, docker_args=None):
     if not component:
         components = ALL_COMPONENTS
     else:
@@ -39,7 +44,28 @@ def build_images(ctx, component):
             'DOCKER_HOST not set, if you get an error you might be missing something like "minikube start"'
         )
 
-    devops.tasks.build_images(ctx, components)
+    with build_images_context(components, dry_run):
+        devops.tasks.build_images(ctx, components, dry_run, docker_args)
+
+
+@contextmanager
+def build_images_context(components, dry_run):
+    """
+    Context manager for building images.
+
+    To be extended as needed, e.g. copy files to be visible for Dockerfile
+    during the build and clean up them afterwards.
+
+    :param list components: The components to be built.
+    :param bool dry_run: True if it's a dry run.
+    """
+
+    # Setup
+    try:
+        yield
+    finally:
+        # Teardown
+        pass
 
 
 @task(
@@ -68,13 +94,18 @@ def release(
     keep_configs=False,
     no_rollout_wait=False,
 ):
+    if not component:
+        components = ALL_COMPONENTS
+    else:
+        components = [c.strip() for cs in component for c in cs.split(",")]
+
     if build:
-        devops.tasks.build_images(ctx, component, dry_run)
+        build_images(ctx, components, dry_run)
 
     devops.tasks.release(
         ctx,
         env,
-        component,
+        components,
         image,
         tag,
         replicas,
@@ -97,6 +128,17 @@ def init_kubernetes(ctx, env):
     settings = load_env_settings(env)
     devops.tasks.ensure_context(settings.KUBE_CONTEXT)
 
+    def _get_kube_files(kube_context):
+        kube_files = {f.name: f for f in Path("kube").glob("*.yaml")}
+
+        overrides = (Path("kube") / kube_context / "overrides").glob("*.yaml")
+        for f in overrides:
+            kube_files[f.name] = f
+
+        # Convert to sorted list
+        kube_files = [kube_files[name] for name in sorted(kube_files.keys())]
+        return kube_files
+
     def _apply(config, **kwargs):
         run(["kubectl", "apply", "-f", config], **kwargs)
 
@@ -108,7 +150,7 @@ def init_kubernetes(ctx, env):
             logger.info(f"Applying Sealed Secrets master key from {master_key}")
             _apply(master_key, check=False)
 
-    for c in Path("kube").glob("*.yaml"):
+    for c in _get_kube_files(settings.KUBE_CONTEXT):
         _apply(c)
 
     # Wait for Sealed Secrets -controller to start up
@@ -220,13 +262,6 @@ def kubeval(ctx):
         if s.startswith("temp"):
             return True
 
-        # Sealed Secrets has validation issues
-        if path.name == "01-sealed-secrets-controller.yaml":
-            return True
-
-        if "apiVersion: bitnami.com/v1alpha1" in path.read_text():
-            return True
-
         return False
 
     kube_yamls = [
@@ -235,7 +270,9 @@ def kubeval(ctx):
         if not _should_ignore(path)
     ]
 
-    run(["kubeval"] + kube_yamls)
+    skip_kinds = ",".join(devops.settings.KUBEVAL_SKIP_KINDS)
+
+    run(["kubeval", "--skip-kinds", skip_kinds] + kube_yamls)
 
 
 @task()
