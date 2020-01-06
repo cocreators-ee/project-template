@@ -341,12 +341,12 @@ class Component:
                 continue
 
             self._patch_generic(doc)
-            if kind == "Deployment":
-                self._patch_deployment(doc)
-            elif kind == "DaemonSet":
-                self._patch_daemon_set(doc)
-            elif kind == "StatefulSet":
-                self._patch_stateful_set(doc)
+            if kind in ("Deployment", "DaemonSet", "StatefulSet"):
+                logger.info(f"Patching found {kind}")
+                self._patch_extra(doc)
+            elif kind == "CronJob":
+                logger.info(f"Patching found {kind}")
+                self._patch_cronjob(doc)
 
             processed.append(doc)
 
@@ -360,23 +360,16 @@ class Component:
             logger.info(f"Updating namespace to {self.namespace}")
             meta["namespace"] = self.namespace
 
-    def _patch_deployment(self, doc: dict):
-        logger.info("Patching found Deployment")
+    def _patch_extra(self, doc: dict):
         self._patch_containers(doc)
         self._patch_image_pull_secrets(doc)
         self._patch_replicas(doc)
 
-    def _patch_daemon_set(self, doc: dict):
-        logger.info("Patching found DaemonSet")
-        self._patch_containers(doc)
-        self._patch_image_pull_secrets(doc)
-        self._patch_replicas(doc)
-
-    def _patch_stateful_set(self, doc: dict):
-        logger.info("Patching found StatefulSet")
-        self._patch_containers(doc)
-        self._patch_image_pull_secrets(doc)
-        self._patch_replicas(doc)
+    def _patch_cronjob(self, doc: dict):
+        spec = doc["spec"]["jobTemplate"]
+        self._patch_containers(spec)
+        self._patch_image_pull_secrets(spec)
+        self._patch_replicas(spec)
 
     def _patch_containers(self, doc: dict):
         logger.info("Patching containers")
