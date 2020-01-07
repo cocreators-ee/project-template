@@ -24,9 +24,34 @@ spec:
           image: imagined.registry.tld/myproj-service-test-deployment:latest
 """
 
+CRONJOB = """
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: test-cronjob
+spec:
+  schedule: '* * * * *'
+  jobTemplate:
+    spec:
+      replicas: 1
+      template:
+        metadata:
+          labels:
+            app: test-cronjob
+        spec:
+          containers:
+            - name: test-cronjob
+              imagePullPolicy: IfNotPresent
+              image: imagined.registry.tld/myproj-service-test-cronjob:latest
+"""
+
 
 def get_deployment() -> dict:
     return yaml.load(StringIO(DEPLOYMENT), yaml.Loader)
+
+
+def get_cronjob() -> dict:
+    return yaml.load(StringIO(CRONJOB), yaml.Loader)
 
 
 def test_get_docker_repository():
@@ -78,3 +103,23 @@ def test_patch_replicas():
     c._patch_replicas(deploy)
 
     assert deploy["spec"]["replicas"] == 77
+
+
+def test_patch_cronjob():
+    cronjob = get_cronjob()
+    c = Component("service/test-cronjob")
+    c.replicas = 77
+    c.image_pull_secrets = {"imagined.registry.tld": "secret"}
+    c.image_prefix = ""
+    c.image = "imagined.registry.tld/test-image"
+    c.tag = "v6.6.7"
+
+    c._patch_cronjob(cronjob)
+    # Assert image
+    spec = cronjob["spec"]["jobTemplate"]["spec"]["template"]["spec"]
+    cronjob_image = spec["containers"][0]["image"]
+    assert cronjob_image == "imagined.registry.tld/test-image:v6.6.7"
+    # Assert imagePullSecrets
+    assert spec["imagePullSecrets"][0]["name"] == "secret"
+    # Assert replicas
+    assert cronjob["spec"]["jobTemplate"]["spec"]["replicas"] == 77
