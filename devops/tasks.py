@@ -1,3 +1,4 @@
+import base64
 import random
 import string
 from pathlib import Path
@@ -13,8 +14,13 @@ from devops.lib.utils import (
     load_env_settings,
     master_key_path,
     run,
+    secrets_pem_path,
 )
+from devops.settings import UNSEALED_SECRETS_EXTENSION
 from invoke import Context
+from ruamel.yaml import YAML
+from ruamel.yaml.compat import StringIO
+from ruamel.yaml.scalarstring import LiteralScalarString, PlainScalarString
 
 RELEASE_TMP = Path("temp")
 
@@ -229,6 +235,8 @@ def get_master_key(env: str) -> None:
     settings = load_env_settings(env)
     ensure_context(settings.KUBE_CONTEXT)
 
+    label(logger.info, f"Getting master key for {env}")
+
     # Based on:
     # https://github.com/bitnami-labs/sealed-secrets#how-can-i-do-a-backup-of-my-sealedsecrets
     result = run(
@@ -252,3 +260,162 @@ def get_master_key(env: str) -> None:
 
     with output_file.open("w", encoding="utf-8") as f:
         f.write(content)
+
+
+def unseal_secrets(env: str) -> None:
+    """
+    Decrypts the secrets for the desired env and base64 decodes them to make
+    them easy to edit.
+
+    :param str env: The environment.
+    """
+    # Validate env
+    load_env_settings(env)
+
+    master_key = master_key_path(env=env)
+    if not master_key.exists():
+        get_master_key(env=env)
+
+    sealed_secret_files = [
+        secret_file
+        for secret_file in (Path("envs") / env / "secrets").glob("*.yaml")
+        if not secret_file.name.endswith(UNSEALED_SECRETS_EXTENSION)
+    ]
+
+    label(logger.info, f"Unsealing secrets for {env}")
+
+    for input_file in sealed_secret_files:
+        output_file = input_file.with_name(input_file.stem + UNSEALED_SECRETS_EXTENSION)
+
+        logger.info(f"Unsealing {input_file} to {output_file}")
+
+        with input_file.open("r", encoding="utf-8") as f:
+            content = f.read()
+
+        content = kube_unseal(content, master_key)
+        content = base64_decode_secrets(content)
+
+        with output_file.open("w", encoding="utf-8") as f:
+            f.write(content)
+
+        input_file.unlink()
+
+
+def seal_secrets(env: str) -> None:
+    """
+    Base64 encodes and seals the secrets for the desired env.
+
+    :param str env: The environment.
+    """
+    # Validate env
+    load_env_settings(env)
+
+    secrets_pem = secrets_pem_path(env=env)
+
+    unsealed_secret_files = (Path("envs") / env / "secrets").glob(
+        f"*{UNSEALED_SECRETS_EXTENSION}"
+    )
+
+    label(logger.info, f"Sealing secrets for {env}")
+
+    for input_file in unsealed_secret_files:
+        output_file_name = input_file.name[: -len(UNSEALED_SECRETS_EXTENSION)] + ".yaml"
+        output_file = input_file.with_name(output_file_name)
+
+        logger.info(f"Sealing {input_file} as {output_file}")
+
+        with input_file.open("r", encoding="utf-8") as f:
+            content = f.read()
+
+        content = base64_encode_secrets(content)
+        content = kube_seal(content, cert=secrets_pem)
+
+        with output_file.open("w", encoding="utf-8") as f:
+            f.write(content)
+
+        input_file.unlink()
+
+
+def base64_decode_secrets(content: str) -> str:
+    """
+    Base64 decode a Kubernetes Secret yaml file
+
+    :param content: The content of the yaml file
+    :return str: The base64 decoded version of the yaml file
+    """
+    yaml = YAML()
+    secrets = yaml.load(content)
+
+    data = secrets["data"]
+    for key, value in data.items():
+        if value is not None:
+            value = base64.b64decode(value.encode("utf-8")).decode("utf-8")
+            if "\n" in value:
+                # If there's a line break in the value we want to dump it using
+                # the literal syntax
+                value = LiteralScalarString(value)
+            data[key] = value
+
+    stream = StringIO()
+    yaml.dump(secrets, stream)
+    return stream.getvalue().rstrip() + "\n"
+
+
+def base64_encode_secrets(content: str) -> str:
+    """
+    Base64 encode a Kubernetes Secret yaml file
+
+    :return str: The readable version of the yaml file.
+    """
+
+    yaml = YAML()
+    secrets = yaml.load(content)
+
+    data = secrets["data"]
+    for key, value in data.items():
+        if value is not None:
+            value = base64.b64encode(value.encode("utf-8")).decode("utf-8")
+            data[key] = PlainScalarString(value)
+
+    stream = StringIO()
+    yaml.dump(secrets, stream)
+    return stream.getvalue().rstrip() + "\n"
+
+
+def kube_unseal(content: str, master_key: Path) -> str:
+    """
+    Decrypt given content using kubeseal.
+
+    :param str content: The content of the "SealedSecrets" yaml file.
+    :param Path master_key: The private key to use for decryption.
+    :return str: The content of a Kubernetes "Secrets" yaml file.
+    """
+    result = run(
+        [
+            "kubeseal",
+            "--recovery-unseal",
+            "--recovery-private-key",
+            master_key,
+            "-o",
+            "yaml",
+        ],
+        input=content.encode(encoding="utf-8"),
+    )
+
+    return result.stdout.decode(encoding="utf-8")
+
+
+def kube_seal(content: str, cert: Path) -> str:
+    """
+    Encrypt given content using kubeseal.
+
+    :param str content: The content of a Kubernetes "Secrets" yaml file.
+    :param Path cert: Certificate / public key file to use for encryption.
+    :return str: The content of the "SealedSecrets" yaml file.
+    """
+    result = run(
+        ["kubeseal", "--cert", cert, "-o", "yaml"],
+        input=content.encode(encoding="utf-8"),
+    )
+
+    return result.stdout.decode(encoding="utf-8").rstrip() + "\n"

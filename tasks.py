@@ -391,3 +391,30 @@ def get_master_key(ctx, env):
     :param str env: The environment (one from /envs/)
     """
     devops.tasks.get_master_key(env=env)
+
+
+@task()
+def unseal_secrets(ctx, env):
+    """Decrypts the secrets for the desired env and base64 decodes them to make
+    them easy to edit.
+
+    Examples:
+    poetry run invoke secrets.unseal-secrets --env staging
+
+    :param invoke.Context ctx: The invoke context.
+    :param str env: The environment.
+    """
+    devops.tasks.unseal_secrets(env=env)
+
+
+@task()
+def seal_secrets(ctx, env):
+    """Base64 encodes and seals the secrets for the desired env.
+
+    Examples:
+    poetry run invoke secrets.seal-secrets --env staging
+
+    :param invoke.Context ctx: The invoke context.
+    :param str env: The environment.
+    """
+    devops.tasks.seal_secrets(env=env)
