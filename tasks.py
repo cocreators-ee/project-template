@@ -380,3 +380,14 @@ def cleanup_acr_repository(ctx, registry, repository):
                 f"{repository}:{tag}",
             ]
         )
+
+
+@task()
+def get_master_key(ctx, env):
+    """
+    Get the master key for SealedSecrets for the given env.
+
+    :param invoke.Context ctx: The invoke context.
+    :param str env: The environment (one from /envs/)
+    """
+    devops.tasks.get_master_key(env=env)

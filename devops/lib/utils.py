@@ -45,6 +45,10 @@ def list_envs() -> List[str]:
     return envs
 
 
+def master_key_path(env: str) -> Path:
+    return Path("envs") / env / "master.key"
+
+
 def run(
     args, cwd=None, check=True, env=None, stream=False, timeout=None
 ) -> subprocess.CompletedProcess:

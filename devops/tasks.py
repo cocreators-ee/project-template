@@ -6,7 +6,14 @@ from typing import List
 
 from devops.lib.component import Component
 from devops.lib.log import logger
-from devops.lib.utils import big_label, label, list_envs, load_env_settings, run
+from devops.lib.utils import (
+    big_label,
+    label,
+    list_envs,
+    load_env_settings,
+    master_key_path,
+    run,
+)
 from invoke import Context
 
 RELEASE_TMP = Path("temp")
@@ -20,8 +27,10 @@ def generate_release_id() -> str:
 
 
 def build_images(ctx, components, dry_run=False, docker_args=None):
-    big_label(logger.info,
-              f"Building images{f' with args: {docker_args}' if docker_args else ''}")
+    big_label(
+        logger.info,
+        f"Building images{f' with args: {docker_args}' if docker_args else ''}",
+    )
     for c in components:
         component = Component(c)
         component.build(ctx, dry_run, docker_args)
@@ -209,3 +218,37 @@ def release(
         logger.info(f"Removing temporary configurations from {rel_path}")
         if rel_path.exists():
             rmtree(rel_path)
+
+
+def get_master_key(env: str) -> None:
+    """
+    Get the master key for SealedSecrets for the given env.
+
+    :param str env: The environment
+    """
+    settings = load_env_settings(env)
+    ensure_context(settings.KUBE_CONTEXT)
+
+    # Based on:
+    # https://github.com/bitnami-labs/sealed-secrets#how-can-i-do-a-backup-of-my-sealedsecrets
+    result = run(
+        [
+            "kubectl",
+            "get",
+            "secret",
+            "-n",
+            "kube-system",
+            "-l",
+            "sealedsecrets.bitnami.com/sealed-secrets-key",
+            "-o",
+            "yaml",
+        ]
+    )
+
+    content = result.stdout.decode(encoding="utf-8")
+    output_file = master_key_path(env=env)
+
+    logger.info(f"Saving master key to {output_file}")
+
+    with output_file.open("w", encoding="utf-8") as f:
+        f.write(content)

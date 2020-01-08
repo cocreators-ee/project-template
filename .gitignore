@@ -10,3 +10,4 @@ temp
 settings_local.py
 .venv/
 .env/
+envs/*/master.key
