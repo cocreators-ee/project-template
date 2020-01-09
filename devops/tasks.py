@@ -295,8 +295,6 @@ def unseal_secrets(env: str) -> None:
 
         output_file.write_text(content, encoding="utf-8")
 
-        input_file.unlink()
-
 
 def seal_secrets(env: str) -> None:
     """
@@ -327,8 +325,6 @@ def seal_secrets(env: str) -> None:
         content = kube_seal(content, cert=secrets_pem)
 
         output_file.write_text(content, encoding="utf-8")
-
-        input_file.unlink()
 
 
 def base64_decode_secrets(content: str) -> str:
