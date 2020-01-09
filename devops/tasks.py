@@ -343,7 +343,9 @@ def base64_decode_secrets(content: str) -> str:
             value = base64.b64decode(value.encode("utf-8")).decode("utf-8")
             if "\n" in value:
                 # If there's a line break in the value we want to dump it using
-                # the literal syntax
+                # the literal syntax. This will use the pipe symbol (|) to
+                # display for example PEM keys on multiple lines in the final
+                # file rather than as one long string containing "\n".
                 value = LiteralScalarString(value)
             data[key] = value
 
