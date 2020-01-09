@@ -492,7 +492,7 @@ poetry run invoke unseal-secrets --env <env>
 This will convert each of the files in `envs/<env>/secrets/*.yaml` to a corresponding
 `*.unsealed-secrets.yaml` file. This will also base64 decode the file, so you can see and edit the actual values easily.
 
-N.B. Make sure to not under any circumstance commit the `*.unsealed-secrets.yaml` or `master.key` files!
+NOTE: Make sure to not under any circumstance commit the `*.unsealed-secrets.yaml` or `master.key` files!
 
 Once you're done editing the files, you can do the reverse operation by running:
 

@@ -65,7 +65,7 @@ def run(
     :param dict env:
     :param bool stream: If the output should be streamed instead of captured
     :param float timeout: Seconds to wait before failing
-    :param bytes input: Data to be sent to the child process
+    :param bytes input: Data to be sent to the child process via stdin
     :raises subprocess.CalledProcessError:
     :raises subprocess.TimeoutExpired:
     :return subprocess.CompletedProcess:

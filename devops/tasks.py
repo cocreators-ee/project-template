@@ -258,8 +258,7 @@ def get_master_key(env: str) -> None:
 
     logger.info(f"Saving master key to {output_file}")
 
-    with output_file.open("w", encoding="utf-8") as f:
-        f.write(content)
+    output_file.write_text(content, encoding="utf-8")
 
 
 def unseal_secrets(env: str) -> None:
@@ -289,14 +288,12 @@ def unseal_secrets(env: str) -> None:
 
         logger.info(f"Unsealing {input_file} to {output_file}")
 
-        with input_file.open("r", encoding="utf-8") as f:
-            content = f.read()
+        content = input_file.read_text(encoding="utf-8")
 
         content = kube_unseal(content, master_key)
         content = base64_decode_secrets(content)
 
-        with output_file.open("w", encoding="utf-8") as f:
-            f.write(content)
+        output_file.write_text(content, encoding="utf-8")
 
         input_file.unlink()
 
@@ -324,14 +321,12 @@ def seal_secrets(env: str) -> None:
 
         logger.info(f"Sealing {input_file} as {output_file}")
 
-        with input_file.open("r", encoding="utf-8") as f:
-            content = f.read()
+        content = input_file.read_text(encoding="utf-8")
 
         content = base64_encode_secrets(content)
         content = kube_seal(content, cert=secrets_pem)
 
-        with output_file.open("w", encoding="utf-8") as f:
-            f.write(content)
+        output_file.write_text(content, encoding="utf-8")
 
         input_file.unlink()
 
