@@ -272,6 +272,8 @@ def unseal_secrets(env: str) -> None:
     load_env_settings(env)
 
     master_key = master_key_path(env=env)
+    secrets_pem = secrets_pem_path(env=env)
+
     if not master_key.exists():
         get_master_key(env=env)
 
@@ -290,7 +292,7 @@ def unseal_secrets(env: str) -> None:
 
         content = input_file.read_text(encoding="utf-8")
 
-        content = kube_unseal(content, master_key)
+        content = kube_unseal(content, master_key, cert=secrets_pem)
         content = base64_decode_secrets(content)
 
         output_file.write_text(content, encoding="utf-8")
@@ -375,12 +377,13 @@ def base64_encode_secrets(content: str) -> str:
     return stream.getvalue().rstrip() + "\n"
 
 
-def kube_unseal(content: str, master_key: Path) -> str:
+def kube_unseal(content: str, master_key: Path, cert: Path) -> str:
     """
     Decrypt given content using kubeseal.
 
     :param str content: The content of the "SealedSecrets" yaml file.
     :param Path master_key: The private key to use for decryption.
+    :param Path cert: Certificate / public key file to use for encryption.
     :return str: The content of a Kubernetes "Secrets" yaml file.
     """
     result = run(
@@ -391,6 +394,12 @@ def kube_unseal(content: str, master_key: Path) -> str:
             master_key,
             "-o",
             "yaml",
+            # Add the --cert flag to allow this to run also without a
+            # ~/.kube/config file, for example in Travis.
+            # For more details please see:
+            # https://github.com/bitnami-labs/sealed-secrets/issues/341
+            "--cert",
+            cert,
         ],
         input=content.encode(encoding="utf-8"),
     )
