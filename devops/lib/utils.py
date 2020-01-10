@@ -45,8 +45,16 @@ def list_envs() -> List[str]:
     return envs
 
 
+def master_key_path(env: str) -> Path:
+    return Path("envs") / env / "master.key"
+
+
+def secrets_pem_path(env: str) -> Path:
+    return Path("envs") / env / "secrets.pem"
+
+
 def run(
-    args, cwd=None, check=True, env=None, stream=False, timeout=None
+    args, cwd=None, check=True, env=None, stream=False, timeout=None, input=None
 ) -> subprocess.CompletedProcess:
     """
     Run a command
@@ -57,6 +65,7 @@ def run(
     :param dict env:
     :param bool stream: If the output should be streamed instead of captured
     :param float timeout: Seconds to wait before failing
+    :param bytes input: Data to be sent to the child process via stdin
     :raises subprocess.CalledProcessError:
     :raises subprocess.TimeoutExpired:
     :return subprocess.CompletedProcess:
@@ -66,7 +75,7 @@ def run(
         args[index] = str(value)
     logger.info("  " + " ".join(args))
 
-    kwargs = {"cwd": cwd, "check": check, "env": env}
+    kwargs = {"cwd": cwd, "check": check, "env": env, "input": input}
 
     if not stream:
         kwargs["stdout"] = subprocess.PIPE

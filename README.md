@@ -473,6 +473,37 @@ You might also want to back-up your master key, but do NOT store it in
 the repository - put it safely away in e.g. your password manager's
 secure notes -section.
 
+You can export the master key by running:
+
+```bash
+poetry run invoke get-master-key --env <env>
+```
+
+This will save the key as `envs/<env>/master.key`. Make sure to NOT under any circumstance commit this file.
+
+#### Working with SealedSecrets
+
+If you have the `master.key` file for an environment (or sufficient privileges to retrieve it from the cluster),
+you can use the following command to unseal the secrets to a readable and editable format:
+
+```bash
+poetry run invoke unseal-secrets --env <env>
+```
+This will convert each of the files in `envs/<env>/secrets/*.yaml` to a corresponding
+`*.unsealed-secrets.yaml` file. This will also base64 decode the file, so you can see and edit the actual values easily.
+
+NOTE: Make sure to not under any circumstance commit the `*.unsealed-secrets.yaml` or `master.key` files!
+
+Once you're done editing the files, you can do the reverse operation by running:
+
+```bash
+poetry run invoke seal-secrets --env <env>
+```
+
+This will base64 encode all the values and then seal the secrets using `envs/<env>/secrets.pem`.
+
+Note that also unchanged secrets will show up as changed in the SealedSecrets yaml file due to how kubeseal works.
+
 
 ### License
 
