@@ -1,7 +1,11 @@
+import subprocess
+
+import devops.lib.utils
 from devops.settings import UNSEALED_SECRETS_EXTENSION
 from devops.tasks import (
     base64_decode_secrets,
     base64_encode_secrets,
+    get_master_key,
     seal_secrets,
     unseal_secrets,
 )
@@ -115,6 +119,24 @@ def test_base64_encode_decode_secrets():
     re_decoded = base64_decode_secrets(re_encoded)
     assert encoded == re_encoded
     assert decoded == re_decoded
+
+
+def test_get_master_key(clean_test_settings, monkeypatch):
+    TEST_ENV_PATH.mkdir(parents=True)
+    TEST_ENV_SETTINGS.write_text(TEST_SETTINGS)
+
+    assert TEST_ENV_MASTER_KEY.exists() is False
+
+    def mock_run(args, **kwargs):
+        return subprocess.CompletedProcess(
+            args, returncode=0, stdout=MASTER_KEY.encode(encoding="utf-8")
+        )
+
+    monkeypatch.setattr("subprocess.run", mock_run)
+
+    get_master_key(TEST_ENV)
+    assert TEST_ENV_MASTER_KEY.exists()
+    assert TEST_ENV_MASTER_KEY.read_text(encoding="utf-8") == MASTER_KEY
 
 
 def test_seal_unseal_secrets(clean_test_settings):
