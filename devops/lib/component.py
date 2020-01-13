@@ -366,10 +366,9 @@ class Component:
         self._patch_replicas(doc)
 
     def _patch_cronjob(self, doc: dict):
-        spec = doc["spec"]["jobTemplate"]
-        self._patch_containers(spec)
-        self._patch_image_pull_secrets(spec)
-        self._patch_replicas(spec)
+        job_template = doc["spec"]["jobTemplate"]
+        self._patch_containers(job_template)
+        self._patch_image_pull_secrets(job_template)
 
     def _patch_containers(self, doc: dict):
         logger.info("Patching containers")

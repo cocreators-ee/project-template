@@ -33,7 +33,6 @@ spec:
   schedule: '* * * * *'
   jobTemplate:
     spec:
-      replicas: 1
       template:
         metadata:
           labels:
@@ -108,7 +107,6 @@ def test_patch_replicas():
 def test_patch_cronjob():
     cronjob = get_cronjob()
     c = Component("service/test-cronjob")
-    c.replicas = 77
     c.image_pull_secrets = {"imagined.registry.tld": "secret"}
     c.image_prefix = ""
     c.image = "imagined.registry.tld/test-image"
@@ -121,5 +119,3 @@ def test_patch_cronjob():
     assert cronjob_image == "imagined.registry.tld/test-image:v6.6.7"
     # Assert imagePullSecrets
     assert spec["imagePullSecrets"][0]["name"] == "secret"
-    # Assert replicas
-    assert cronjob["spec"]["jobTemplate"]["spec"]["replicas"] == 77
