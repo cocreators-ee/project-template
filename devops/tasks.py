@@ -90,8 +90,15 @@ def ensure_namespace(namespace):
 def release_env(ctx: Context, env, dry_run=False):
     env_path = Path("envs") / env
 
-    secrets = (env_path / "secrets").glob("*.yaml")
-    for secret in sorted(secrets):
+    secrets = sorted(
+        [
+            secret_file
+            for secret_file in (env_path / "secrets").glob("*.yaml")
+            if not secret_file.name.endswith(UNSEALED_SECRETS_EXTENSION)
+        ]
+    )
+
+    for secret in secrets:
         # Sealed Secrets can't be validated like this
         # ctx.run(f"kubeval {secret}")
         if dry_run:
