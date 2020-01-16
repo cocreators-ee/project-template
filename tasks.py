@@ -24,16 +24,16 @@ validate_release_configs = task(devops.tasks.validate_release_configs)
 
 
 @task(
-    iterable=["component", "docker_args"],
+    iterable=["component", "docker_arg"],
     help={
         "component": "The components to build - if none given defaults to: "
         + ", ".join(ALL_COMPONENTS),
         "dry_run": "Do not perform any changes, just generate configs and log what would be done",
-        "docker_args": "List of arguments to build docker images --docker-args foo=bar."
-        + " Repeat for multiple build arguments.",
+        "docker_arg": "Arguments to build docker images, e.g. --docker-arg foo=bar "
+        + "--docker-arg bar=baz",
     },
 )
-def build_images(ctx, component, dry_run=False, docker_args=None):
+def build_images(ctx, component, dry_run=False, docker_arg=None):
     if not component:
         components = ALL_COMPONENTS
     else:
@@ -45,7 +45,7 @@ def build_images(ctx, component, dry_run=False, docker_args=None):
         )
 
     with build_images_context(components, dry_run):
-        devops.tasks.build_images(ctx, components, dry_run, docker_args)
+        devops.tasks.build_images(ctx, components, dry_run, docker_arg)
 
 
 @contextmanager
@@ -69,7 +69,7 @@ def build_images_context(components, dry_run):
 
 
 @task(
-    iterable=["tag", "component", "image"],
+    iterable=["tag", "component", "image", "docker_arg"],
     help={
         "env": f"Environment to release, one of: {', '.join(ENVS)}",
         "component": "Components to release. Defaults to envs/<env>/settings.COMPONENTS",
@@ -80,8 +80,8 @@ def build_images_context(components, dry_run):
         "dry_run": "Do not perform any changes, just generate configs and log what would be done",
         "keep_configs": "Do not delete generated configs after release",
         "no_rollout_wait": "Do not pause to wait for rollout completion, e.g. if updating release pipeline agents",
-        "docker_args": "List of arguments to build docker images --docker-args foo=bar."
-        + " Repeat for multiple build arguments.",
+        "docker_arg": "Arguments to build docker images, e.g. --docker-arg foo=bar "
+        + "--docker-arg bar=baz",
     },
 )
 def release(
@@ -95,7 +95,7 @@ def release(
     dry_run=False,
     keep_configs=False,
     no_rollout_wait=False,
-    docker_args=None,
+    docker_arg=None,
 ):
     if not component:
         components = ALL_COMPONENTS
@@ -103,7 +103,7 @@ def release(
         components = [c.strip() for cs in component for c in cs.split(",")]
 
     if build:
-        build_images(ctx, components, dry_run, docker_args)
+        build_images(ctx, components, dry_run, docker_arg)
 
     devops.tasks.release(
         ctx,
