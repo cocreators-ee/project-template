@@ -36,11 +36,13 @@ def load_env_settings(env: str) -> Settings:
 
 
 def list_envs() -> List[str]:
-    envs = []
-
-    for path in Path("envs").iterdir():  # type: Path
-        if path.is_dir() and not path.name.startswith("__"):
-            envs.append(path.name)
+    envs = [
+        path.name
+        for path in Path("envs").iterdir()
+        if path.is_dir()
+        and not path.name.startswith("__")
+        and not path.name.startswith(".")
+    ]
 
     return envs
 

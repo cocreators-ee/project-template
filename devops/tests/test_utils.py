@@ -10,8 +10,9 @@ import yaml
 
 from devops.lib.utils import list_envs, load_env_settings, run, merge_docs
 
+ENVS_PATH = Path("envs")
 TEST_ENV = "unit_test_env_6zxuj"
-TEST_ENV_PATH = Path("envs") / TEST_ENV
+TEST_ENV_PATH = ENVS_PATH / TEST_ENV
 TEST_ENV_SETTINGS = TEST_ENV_PATH / "settings.py"
 
 TEST_SETTINGS = """
@@ -330,3 +331,16 @@ def test_readme_kube_merge():
         print(f"Doc {i + 1} actual  : {merged_json}")
 
         assert merged_json == expected_json
+
+
+@pytest.mark.parametrize("folder", ["__foo__", ".bar"])
+def test_list_envs(folder):
+    path = ENVS_PATH / folder
+    path.mkdir()
+    try:
+        envs = list_envs()
+
+        assert folder not in envs
+        assert "minikube" in envs
+    finally:
+        path.rmdir()
