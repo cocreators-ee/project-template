@@ -29,8 +29,8 @@ validate_release_configs = task(devops.tasks.validate_release_configs)
         "component": "The components to build - if none given defaults to: "
         + ", ".join(ALL_COMPONENTS),
         "dry_run": "Do not perform any changes, just generate configs and log what would be done",
-        "docker_args": "Arguments to build docker images --docker-args foo=bar. "
-        + "Repeat for multiple build arguments.",
+        "docker_args": "List of arguments to build docker images --docker-args foo=bar."
+        + " Repeat for multiple build arguments.",
     },
 )
 def build_images(ctx, component, dry_run=False, docker_args=None):
@@ -80,6 +80,8 @@ def build_images_context(components, dry_run):
         "dry_run": "Do not perform any changes, just generate configs and log what would be done",
         "keep_configs": "Do not delete generated configs after release",
         "no_rollout_wait": "Do not pause to wait for rollout completion, e.g. if updating release pipeline agents",
+        "docker_args": "List of arguments to build docker images --docker-args foo=bar."
+        + " Repeat for multiple build arguments.",
     },
 )
 def release(
@@ -93,6 +95,7 @@ def release(
     dry_run=False,
     keep_configs=False,
     no_rollout_wait=False,
+    docker_args=None,
 ):
     if not component:
         components = ALL_COMPONENTS
@@ -100,7 +103,7 @@ def release(
         components = [c.strip() for cs in component for c in cs.split(",")]
 
     if build:
-        build_images(ctx, components, dry_run)
+        build_images(ctx, components, dry_run, docker_args)
 
     devops.tasks.release(
         ctx,
