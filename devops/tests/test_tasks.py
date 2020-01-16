@@ -1,6 +1,5 @@
 import subprocess
 
-import devops.lib.utils
 from devops.settings import UNSEALED_SECRETS_EXTENSION
 from devops.tasks import (
     base64_decode_secrets,

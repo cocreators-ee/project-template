@@ -41,7 +41,7 @@ def build_images(ctx, component, dry_run=False, docker_args=None):
 
     if "DOCKER_HOST" not in environ:
         logger.warn(
-            'DOCKER_HOST not set, if you get an error you might be missing something like "minikube start"'
+            'DOCKER_HOST not set. You might want to run "minikube start" or run "minikube docker-env" and follow the instructions.'
         )
 
     with build_images_context(components, dry_run):
