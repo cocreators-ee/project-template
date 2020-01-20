@@ -383,12 +383,20 @@ poetry run invoke release <env> \
 poetry run invoke build-images --component service/pipeline-agent
 
 # Pass build args
-poetry run invoke build-images --component service/pipeline-agent --docker-args=foo=bar --docker-args=boo=far ...
+poetry run invoke build-images --component service/pipeline-agent --docker-arg foo=bar --docker-arg boo=far ...
 
 # Clean up the Azure Container Registry, name is from <name>.azurecr.io
 poetry run invoke cleanup-registry <name>
 ```
 
+### Passing build arguments to docker images
+
+You can pass build arguments to Dockerfile by passing
+`--docker-arg ARG1=argument --docker-arg ARG2=argument`
+to the `poetry run invoke build-images` command. Remember to define the
+args in your Dockerfile (`ARG ARG1=default_value`) to actually use them.
+This of course means that you can also pass them to
+`docker build --build-arg ARG1=argument`
 
 ## Initializing Azure Kubernetes Service -cluster
 
