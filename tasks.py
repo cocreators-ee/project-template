@@ -29,7 +29,7 @@ validate_release_configs = task(devops.tasks.validate_release_configs)
         "component": "The components to build - if none given defaults to: "
         + ", ".join(ALL_COMPONENTS),
         "dry_run": "Do not perform any changes, just generate configs and log what would be done",
-        "docker_arg": "Arguments to build docker images, e.g. --docker-arg foo=bar "
+        "docker_arg": "Arguments to pass to docker build, e.g. --docker-arg foo=bar "
         + "--docker-arg bar=baz",
     },
 )
@@ -80,7 +80,7 @@ def build_images_context(components, dry_run):
         "dry_run": "Do not perform any changes, just generate configs and log what would be done",
         "keep_configs": "Do not delete generated configs after release",
         "no_rollout_wait": "Do not pause to wait for rollout completion, e.g. if updating release pipeline agents",
-        "docker_arg": "Arguments to build docker images, e.g. --docker-arg foo=bar "
+        "docker_arg": "Arguments to pass to docker build, e.g. --docker-arg foo=bar "
         + "--docker-arg bar=baz",
     },
 )
