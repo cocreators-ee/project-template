@@ -130,6 +130,7 @@ def init_kubernetes(ctx, env):
 
     settings = load_env_settings(env)
     devops.tasks.ensure_context(settings.KUBE_CONTEXT)
+    devops.tasks.ensure_namespace(settings.KUBE_NAMESPACE)
 
     def _get_kube_files(kube_context):
         kube_files = {f.name: f for f in Path("kube").glob("*.yaml")}
