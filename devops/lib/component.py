@@ -400,7 +400,7 @@ class Component:
                 break
 
         if "/" in image:
-            host, _ = image.split("/")
+            host, _ = image.split("/", maxsplit=1)
             if host in self.image_pull_secrets:
                 secret = self.image_pull_secrets[host]
                 logger.info(f"Patching imagePullSecrets to {secret}")
