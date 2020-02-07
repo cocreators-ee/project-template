@@ -140,7 +140,7 @@ class Component:
 
             with old_file.open(mode="r", encoding="utf-8") as f:
                 content = f.read()
-            if content.startswith(TEMPLATE_HEADER.format(file=template_path)):
+            if content.startswith(TEMPLATE_HEADER.format(file=template_path.as_posix())):
                 old_file.unlink()
                 logger.debug(f"Deleted rendered file {old_file}")
             else:
@@ -165,7 +165,7 @@ class Component:
 
             template = jinja2.Template(content, undefined=jinja2.StrictUndefined)
             try:
-                content = TEMPLATE_HEADER.format(file=template_path)
+                content = TEMPLATE_HEADER.format(file=template_path.as_posix())
                 content += template.render(jinja_context)
                 content += "\n"
             except jinja2.exceptions.UndefinedError as ex:
@@ -175,7 +175,7 @@ class Component:
                 )
 
             output_file = output_path / name
-            with output_file.open(mode="w", encoding="utf-8") as f:
+            with output_file.open(mode="w", encoding="utf-8", newline="\n") as f:
                 f.write(content)
                 rendered_files.append(output_file)
             logger.debug(f"Rendered {kind} file {output_file}")
