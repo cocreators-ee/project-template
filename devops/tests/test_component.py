@@ -119,3 +119,14 @@ def test_patch_cronjob():
     assert cronjob_image == "imagined.registry.tld/test-image:v6.6.7"
     # Assert imagePullSecrets
     assert spec["imagePullSecrets"][0]["name"] == "secret"
+
+
+def test_handling_long_nested_image_name():
+    deploy = get_deployment()
+    c = Component("service/test-service")
+    c.image = "gcr.io/google-containers/etcd-amd64:3.3.10-1"
+    c.image_pull_secrets = {"gcr.io": "secret"}
+
+    c._patch_image_pull_secrets(deploy)
+    spec = deploy["spec"]["template"]["spec"]
+    assert spec["imagePullSecrets"][0]["name"] == "secret"
