@@ -1,6 +1,7 @@
 from io import StringIO
 
 import yaml
+
 from devops.lib.component import Component
 
 DEPLOYMENT = """

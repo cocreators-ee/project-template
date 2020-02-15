@@ -8,7 +8,7 @@ from shutil import rmtree
 import pytest
 import yaml
 
-from devops.lib.utils import list_envs, load_env_settings, run, merge_docs
+from devops.lib.utils import list_envs, load_env_settings, merge_docs, run
 
 ENVS_PATH = Path("envs")
 TEST_ENV = "unit_test_env_6zxuj"

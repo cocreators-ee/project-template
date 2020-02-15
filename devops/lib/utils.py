@@ -2,12 +2,10 @@ import importlib
 import subprocess  # nosec
 import types
 from copy import deepcopy
-from io import StringIO
 from pathlib import Path
 from time import time
 from typing import Callable, List, Optional, Union
 
-import yaml
 from devops.lib.log import logger
 
 

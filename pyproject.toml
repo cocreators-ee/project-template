@@ -21,6 +21,7 @@ line_length = 88
 use_parentheses = true
 include_trailing_comma = true
 multi_line_output = 3
+known_third_party = ["invoke", "jinja2", "pytest", "ruamel", "yaml"]
 
 # Not actually supported yet, future-proofing
 [tool.bandit]

@@ -6,11 +6,12 @@ from pathlib import Path
 from subprocess import CalledProcessError  # nosec
 from time import sleep
 
+from invoke import Context, task
+
 import devops.settings
 import devops.tasks
 from devops.lib.log import logger
 from devops.lib.utils import big_label, label, list_envs, load_env_settings, run
-from invoke import Context, task
 
 ALL_COMPONENTS = ["service/pipeline-agent"]
 
