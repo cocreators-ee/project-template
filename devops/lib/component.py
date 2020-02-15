@@ -140,7 +140,9 @@ class Component:
 
             with old_file.open(mode="r", encoding="utf-8") as f:
                 content = f.read()
-            if content.startswith(TEMPLATE_HEADER.format(file=template_path.as_posix())):
+            if content.startswith(
+                TEMPLATE_HEADER.format(file=template_path.as_posix())
+            ):
                 old_file.unlink()
                 logger.debug(f"Deleted rendered file {old_file}")
             else:
