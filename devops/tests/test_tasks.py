@@ -1,5 +1,7 @@
 import subprocess
 
+from ruamel.yaml import YAML
+
 from devops.settings import UNSEALED_SECRETS_EXTENSION
 from devops.tasks import (
     base64_decode_secrets,
@@ -15,7 +17,6 @@ from devops.tests.test_utils import (
     TEST_SETTINGS,
     clean_test_settings,
 )
-from ruamel.yaml import YAML
 
 TEST_ENV_SECRETS_PATH = TEST_ENV_PATH / "secrets"
 TEST_ENV_SEALED_SECRETS_PATH = TEST_ENV_SECRETS_PATH / "01-test-secrets.yaml"

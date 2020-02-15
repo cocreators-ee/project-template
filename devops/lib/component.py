@@ -7,10 +7,11 @@ from typing import List, Optional
 
 import jinja2
 import yaml
+from invoke import Context
+
 from devops.lib.log import logger
 from devops.lib.utils import label, merge_docs, run
 from devops.settings import IMAGE_PREFIX, KUBEVAL_SKIP_KINDS, TEMPLATE_HEADER
-from invoke import Context
 
 try:
     from yaml import CBaseLoader as BaseLoader, CLoader as Loader, CDumper as Dumper

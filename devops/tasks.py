@@ -5,6 +5,11 @@ from pathlib import Path
 from shutil import rmtree
 from typing import List
 
+from invoke import Context
+from ruamel.yaml import YAML
+from ruamel.yaml.compat import StringIO
+from ruamel.yaml.scalarstring import LiteralScalarString, PlainScalarString
+
 from devops.lib.component import Component
 from devops.lib.log import logger
 from devops.lib.utils import (
@@ -17,10 +22,6 @@ from devops.lib.utils import (
     secrets_pem_path,
 )
 from devops.settings import UNSEALED_SECRETS_EXTENSION
-from invoke import Context
-from ruamel.yaml import YAML
-from ruamel.yaml.compat import StringIO
-from ruamel.yaml.scalarstring import LiteralScalarString, PlainScalarString
 
 RELEASE_TMP = Path("temp")
 
