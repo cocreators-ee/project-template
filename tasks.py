@@ -263,8 +263,10 @@ def kubeval(ctx):
     label(logger.info, "Checking Kubernetes configs")
 
     def _should_ignore(path):
-        s = str(path)
-        if s.startswith("temp"):
+        parts = path.parts
+        if parts[0] == "temp":
+            return True
+        elif parts[0] == "envs" and parts[2] == "merges":
             return True
 
         return False
