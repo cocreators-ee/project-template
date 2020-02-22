@@ -21,7 +21,7 @@ from devops.lib.utils import (
     run,
     secrets_pem_path,
 )
-from devops.settings import UNSEALED_SECRETS_EXTENSION
+from devops.settings import KUBEVAL_SKIP_KINDS, UNSEALED_SECRETS_EXTENSION
 
 RELEASE_TMP = Path("temp")
 
@@ -232,6 +232,33 @@ def release(
         logger.info(f"Removing temporary configurations from {rel_path}")
         if rel_path.exists():
             rmtree(rel_path)
+
+
+def kubeval():
+    """
+    Check that all Kubernetes configs look valid with kubeval
+    """
+
+    label(logger.info, "Checking Kubernetes configs")
+
+    def _should_ignore(path):
+        parts = path.parts
+        if parts[0] == "temp":
+            return True
+        elif parts[0] == "envs" and parts[2] == "merges":
+            return True
+
+        return False
+
+    kube_yamls = [
+        str(path)
+        for path in Path(".").glob("**/kube/*.yaml")
+        if not _should_ignore(path)
+    ]
+
+    skip_kinds = ",".join(KUBEVAL_SKIP_KINDS)
+
+    run(["kubeval", "--skip-kinds", skip_kinds] + kube_yamls)
 
 
 def get_master_key(env: str) -> None:

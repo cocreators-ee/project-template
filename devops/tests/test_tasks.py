@@ -7,6 +7,7 @@ from devops.tasks import (
     base64_decode_secrets,
     base64_encode_secrets,
     get_master_key,
+    kubeval,
     seal_secrets,
     unseal_secrets,
 )
@@ -110,6 +111,10 @@ metadata:
   resourceVersion: ""
   selfLink: ""
 """
+
+
+def test_kubeval(clean_test_settings):
+    kubeval()
 
 
 def test_base64_encode_decode_secrets():
