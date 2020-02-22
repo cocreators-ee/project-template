@@ -14,6 +14,7 @@ from devops.lib.component import Component
 from devops.lib.log import logger
 from devops.lib.utils import (
     big_label,
+    get_merged_kube_file,
     label,
     list_envs,
     load_env_settings,
@@ -23,10 +24,10 @@ from devops.lib.utils import (
 )
 from devops.settings import KUBEVAL_SKIP_KINDS, UNSEALED_SECRETS_EXTENSION
 
-RELEASE_TMP = Path("temp")
+TMP = Path("temp")
 
 
-def generate_release_id() -> str:
+def generate_random_id() -> str:
     length = 5
     chars = string.ascii_lowercase + string.digits
 
@@ -150,7 +151,7 @@ def release(
             path, value = r.split("=")
             replica_counts[path] = value
 
-    rel_id = generate_release_id()
+    rel_id = generate_random_id()
     big_label(logger.info, f"Release {rel_id} to {env} environment starting")
     settings = load_env_settings(env)
 
@@ -164,7 +165,7 @@ def release(
         for path in replica_counts:
             settings.REPLICAS[path] = replica_counts[path]
 
-    rel_path = RELEASE_TMP / rel_id
+    rel_path = TMP / rel_id
 
     logger.info("")
     logger.info("Releasing components:")
@@ -234,7 +235,7 @@ def release(
             rmtree(rel_path)
 
 
-def kubeval():
+def kubeval(keep_configs=False):
     """
     Check that all Kubernetes configs look valid with kubeval
     """
@@ -242,16 +243,15 @@ def kubeval():
     label(logger.info, "Checking Kubernetes configs")
 
     def _should_ignore(path):
-        parts = path.parts
-        if parts[0] == "temp":
-            return True
-        elif parts[0] == "envs" and parts[2] == "merges":
+        if TMP in path.parents:
             return True
 
         return False
 
+    merge_tmp = TMP / f"kubeval-{generate_random_id()}"
+
     kube_yamls = [
-        str(path)
+        str(get_merged_kube_file(path, merge_tmp))
         for path in Path(".").glob("**/kube/*.yaml")
         if not _should_ignore(path)
     ]
@@ -259,6 +259,12 @@ def kubeval():
     skip_kinds = ",".join(KUBEVAL_SKIP_KINDS)
 
     run(["kubeval", "--skip-kinds", skip_kinds] + kube_yamls)
+
+    if not keep_configs and merge_tmp.exists():
+        logger.info(f"Removing temporary kube merges from {merge_tmp}")
+        rmtree(merge_tmp)
+    if keep_configs and merge_tmp.exists():
+        logger.info(f"Keeping temporary kube merges in {merge_tmp}")
 
 
 def get_master_key(env: str) -> None:

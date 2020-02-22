@@ -253,13 +253,14 @@ def init(ctx):
     release(ctx, LOCAL_ENV)
 
 
-@task()
-def kubeval(ctx):
+@task(help={"keep_configs": "Keep copy of generated merges. Defaults to False"})
+def kubeval(ctx, keep_configs=False):
     """
     Check that all Kubernetes configs look valid with kubeval
     :param Context ctx:
+    :param bool keep_configs: Whether to keep a copy of merged kube configs
     """
-    devops.tasks.kubeval()
+    devops.tasks.kubeval(keep_configs=keep_configs)
 
 
 @task()
