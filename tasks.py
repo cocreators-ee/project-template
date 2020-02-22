@@ -253,33 +253,14 @@ def init(ctx):
     release(ctx, LOCAL_ENV)
 
 
-@task()
-def kubeval(ctx):
+@task(help={"keep_configs": "Keep copy of generated merges. Defaults to False"})
+def kubeval(ctx, keep_configs=False):
     """
     Check that all Kubernetes configs look valid with kubeval
     :param Context ctx:
+    :param bool keep_configs: Whether to keep a copy of merged kube configs
     """
-
-    label(logger.info, "Checking Kubernetes configs")
-
-    def _should_ignore(path):
-        parts = path.parts
-        if parts[0] == "temp":
-            return True
-        elif parts[0] == "envs" and parts[2] == "merges":
-            return True
-
-        return False
-
-    kube_yamls = [
-        str(path)
-        for path in Path(".").glob("**/kube/*.yaml")
-        if not _should_ignore(path)
-    ]
-
-    skip_kinds = ",".join(devops.settings.KUBEVAL_SKIP_KINDS)
-
-    run(["kubeval", "--skip-kinds", skip_kinds] + kube_yamls)
+    devops.tasks.kubeval(keep_configs=keep_configs)
 
 
 @task()
