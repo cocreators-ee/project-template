@@ -140,7 +140,7 @@ RUN mkdir -p "/root/.microsoft/Team Foundation/4.0/Configuration/TEE-Mementos" \
 # Install build environment dependencies
 RUN set -exu \
  && curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python \
- && wget "https://github.com/instrumenta/kubeval/releases/download/0.13.0/kubeval-linux-amd64.tar.gz" \
+ && wget "https://github.com/instrumenta/kubeval/releases/download/0.14.0/kubeval-linux-amd64.tar.gz" \
  && tar -xf "kubeval-linux-amd64.tar.gz" \
  && chmod +x kubeval \
  && mv kubeval /usr/local/bin \
