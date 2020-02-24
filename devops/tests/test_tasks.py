@@ -1,5 +1,6 @@
 import subprocess
 
+import pytest
 from ruamel.yaml import YAML
 
 from devops.settings import UNSEALED_SECRETS_EXTENSION
@@ -112,9 +113,39 @@ metadata:
   selfLink: ""
 """
 
+CRON_JOB_WITH_EXTRA_FIELDS = """
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: test-cronjob
+spec:
+  schedule: '* * * * *'
+  jobTemplate:
+    spec:
+      replicas: 1
+      template:
+        metadata:
+          labels:
+            app: test-cronjob
+        spec:
+          containers:
+            - name: test-cronjob
+              imagePullPolicy: IfNotPresent
+              image: imagined.registry.tld/myproj-service-test-cronjob:latest
+"""
+
 
 def test_kubeval(clean_test_settings):
     kubeval()
+
+
+def test_kubeval_strict_mode(clean_test_settings):
+    kube_dir = TEST_ENV_PATH / "overrides" / "services" / "kube"
+    kube_dir.mkdir(parents=True)
+    with open(kube_dir / "cron.yaml", mode="w", encoding="utf-8") as f:
+        f.write(CRON_JOB_WITH_EXTRA_FIELDS)
+    with pytest.raises(subprocess.CalledProcessError):
+        kubeval()
 
 
 def test_base64_encode_decode_secrets():
