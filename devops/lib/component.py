@@ -36,7 +36,7 @@ SKIP_PATCH_KUBE_KINDS = (
 RESTART_RESOURCES = ("Deployment", "DaemonSet", "StatefulSet")
 
 # How long to wait for any rollout to successfully complete before failing
-ROLLOUT_TIMEOUT = 5 * 60.0
+DEFAULT_ROLLOUT_TIMEOUT = 5 * 60.0
 
 TEMPLATE_KINDS = {"merge", "override"}
 
@@ -54,6 +54,7 @@ class Component:
         self.path = self.orig_path
         self.tag = "latest"
         self.replicas = None
+        self.rollout_timeout = DEFAULT_ROLLOUT_TIMEOUT
 
         self.kube_configs = self._get_kube_configs()
         self.kube_merges = {}
@@ -294,7 +295,7 @@ class Component:
         if not no_rollout_wait:
             run(
                 ["kubectl", "-n", self.namespace, "rollout", "status", resource],
-                timeout=ROLLOUT_TIMEOUT,
+                timeout=self.rollout_timeout,
             )
 
     def _prepare_configs(self, dst: Path):
