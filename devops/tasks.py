@@ -258,7 +258,7 @@ def kubeval(keep_configs=False):
 
     skip_kinds = ",".join(KUBEVAL_SKIP_KINDS)
 
-    run(["kubeval", "--skip-kinds", skip_kinds] + kube_yamls)
+    run(["kubeval", "--strict", "--skip-kinds", skip_kinds] + kube_yamls)
 
     if not keep_configs and merge_tmp.exists():
         logger.info(f"Removing temporary kube merges from {merge_tmp}")

@@ -81,7 +81,7 @@ class Component:
 
         for file in self.kube_configs:
             path = self.kube_configs[file]
-            result = run(["kubeval", "--skip-kinds", skip_kinds, path])
+            result = run(["kubeval", "--strict", "--skip-kinds", skip_kinds, path])
             if result.returncode > 0:
                 raise ValidationError(f"Validation failed for {path}")
 
