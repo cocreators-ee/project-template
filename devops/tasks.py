@@ -5,6 +5,7 @@ from pathlib import Path
 from shutil import rmtree
 from typing import List
 
+import pytimeparse
 from invoke import Context
 from ruamel.yaml import YAML
 from ruamel.yaml.compat import StringIO
@@ -130,6 +131,7 @@ def release(
     dry_run=False,
     keep_configs=False,
     no_rollout_wait=False,
+    rollout_timeout=None,
 ):
     tags: dict = {}
     images: dict = {}
@@ -211,6 +213,9 @@ def release(
 
         component.patch_from_env(env)
         component.validate(ctx)
+
+        if rollout_timeout:
+            component.rollout_timeout = pytimeparse.parse(rollout_timeout)
 
         component.release(ctx, rel_path, dry_run, no_rollout_wait)
 
