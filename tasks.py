@@ -30,7 +30,7 @@ validate_release_configs = task(devops.tasks.validate_release_configs)
         "component": "The components to build - if none given defaults to: "
         + ", ".join(ALL_COMPONENTS),
         "dry-run": "Do not perform any changes, just generate configs and log what would be done",
-        "docker_arg": "Arguments to pass to docker build, e.g. --docker-arg foo=bar "
+        "docker-arg": "Arguments to pass to docker build, e.g. --docker-arg foo=bar "
         + "--docker-arg bar=baz",
     },
 )
