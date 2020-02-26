@@ -29,7 +29,7 @@ validate_release_configs = task(devops.tasks.validate_release_configs)
     help={
         "component": "The components to build - if none given defaults to: "
         + ", ".join(ALL_COMPONENTS),
-        "dry_run": "Do not perform any changes, just generate configs and log what would be done",
+        "dry-run": "Do not perform any changes, just generate configs and log what would be done",
         "docker_arg": "Arguments to pass to docker build, e.g. --docker-arg foo=bar "
         + "--docker-arg bar=baz",
     },
@@ -78,11 +78,11 @@ def build_images_context(components, dry_run):
         "build": "Also build the components? Build has different defaults.",
         "image": "Override component Docker image, --image <component>=<image>",
         "tag": "Override component Docker tag, --tag <component>=<tag>",
-        "dry_run": "Do not perform any changes, just generate configs and log what would be done",
-        "keep_configs": "Do not delete generated configs after release",
-        "no_rollout_wait": "Do not pause to wait for rollout completion, e.g. if updating release pipeline agents",
-        "rollout_timeout": "Timeout for kubectl rollout operation. e.g 10m or 30s",
-        "docker_arg": "Arguments to pass to docker build, e.g. --docker-arg foo=bar "
+        "dry-run": "Do not perform any changes, just generate configs and log what would be done",
+        "keep-configs": "Do not delete generated configs after release",
+        "no-rollout-wait": "Do not pause to wait for rollout completion, e.g. if updating release pipeline agents",
+        "rollout-timeout": "Timeout for kubectl rollout operation. e.g 10m or 30s",
+        "docker-arg": "Arguments to pass to docker build, e.g. --docker-arg foo=bar "
         + "--docker-arg bar=baz",
     },
 )
@@ -256,7 +256,7 @@ def init(ctx):
     release(ctx, LOCAL_ENV)
 
 
-@task(help={"keep_configs": "Keep copy of generated merges. Defaults to False"})
+@task(help={"keep-configs": "Keep copy of generated merges. Defaults to False"})
 def kubeval(ctx, keep_configs=False):
     """
     Check that all Kubernetes configs look valid with kubeval
