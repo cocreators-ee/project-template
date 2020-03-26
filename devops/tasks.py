@@ -5,10 +5,17 @@ from pathlib import Path
 from shutil import rmtree
 from typing import List
 
+import pytimeparse
+from invoke import Context
+from ruamel.yaml import YAML
+from ruamel.yaml.compat import StringIO
+from ruamel.yaml.scalarstring import LiteralScalarString, PlainScalarString
+
 from devops.lib.component import Component
 from devops.lib.log import logger
 from devops.lib.utils import (
     big_label,
+    get_merged_kube_file,
     label,
     list_envs,
     load_env_settings,
@@ -16,16 +23,12 @@ from devops.lib.utils import (
     run,
     secrets_pem_path,
 )
-from devops.settings import UNSEALED_SECRETS_EXTENSION
-from invoke import Context
-from ruamel.yaml import YAML
-from ruamel.yaml.compat import StringIO
-from ruamel.yaml.scalarstring import LiteralScalarString, PlainScalarString
+from devops.settings import KUBEVAL_SKIP_KINDS, UNSEALED_SECRETS_EXTENSION
 
-RELEASE_TMP = Path("temp")
+TMP = Path("temp")
 
 
-def generate_release_id() -> str:
+def generate_random_id() -> str:
     length = 5
     chars = string.ascii_lowercase + string.digits
 
@@ -128,6 +131,7 @@ def release(
     dry_run=False,
     keep_configs=False,
     no_rollout_wait=False,
+    rollout_timeout=None,
 ):
     tags: dict = {}
     images: dict = {}
@@ -149,7 +153,7 @@ def release(
             path, value = r.split("=")
             replica_counts[path] = value
 
-    rel_id = generate_release_id()
+    rel_id = generate_random_id()
     big_label(logger.info, f"Release {rel_id} to {env} environment starting")
     settings = load_env_settings(env)
 
@@ -163,7 +167,7 @@ def release(
         for path in replica_counts:
             settings.REPLICAS[path] = replica_counts[path]
 
-    rel_path = RELEASE_TMP / rel_id
+    rel_path = TMP / rel_id
 
     logger.info("")
     logger.info("Releasing components:")
@@ -210,6 +214,9 @@ def release(
         component.patch_from_env(env)
         component.validate(ctx)
 
+        if rollout_timeout:
+            component.rollout_timeout = pytimeparse.parse(rollout_timeout)
+
         component.release(ctx, rel_path, dry_run, no_rollout_wait)
 
     if images:
@@ -231,6 +238,38 @@ def release(
         logger.info(f"Removing temporary configurations from {rel_path}")
         if rel_path.exists():
             rmtree(rel_path)
+
+
+def kubeval(keep_configs=False):
+    """
+    Check that all Kubernetes configs look valid with kubeval
+    """
+
+    label(logger.info, "Checking Kubernetes configs")
+
+    def _should_ignore(path):
+        if TMP in path.parents:
+            return True
+
+        return False
+
+    merge_tmp = TMP / f"kubeval-{generate_random_id()}"
+
+    kube_yamls = [
+        str(get_merged_kube_file(path, merge_tmp))
+        for path in Path(".").glob("**/kube/*.yaml")
+        if not _should_ignore(path)
+    ]
+
+    skip_kinds = ",".join(KUBEVAL_SKIP_KINDS)
+
+    run(["kubeval", "--strict", "--skip-kinds", skip_kinds] + kube_yamls)
+
+    if not keep_configs and merge_tmp.exists():
+        logger.info(f"Removing temporary kube merges from {merge_tmp}")
+        rmtree(merge_tmp)
+    if keep_configs and merge_tmp.exists():
+        logger.info(f"Keeping temporary kube merges in {merge_tmp}")
 
 
 def get_master_key(env: str) -> None:

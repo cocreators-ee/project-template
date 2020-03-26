@@ -11,6 +11,9 @@ python:
 before_install:
   - wget https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.9.6/kubeseal-linux-amd64 -O kubeseal
   - sudo install -m 755 kubeseal /usr/local/bin/kubeseal
+  - wget https://github.com/instrumenta/kubeval/releases/download/0.14.0/kubeval-linux-amd64.tar.gz
+  - tar xf kubeval-linux-amd64.tar.gz
+  - sudo cp kubeval /usr/local/bin
 
 install:
   - pip install poetry

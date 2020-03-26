@@ -2,12 +2,12 @@ import importlib
 import subprocess  # nosec
 import types
 from copy import deepcopy
-from io import StringIO
 from pathlib import Path
 from time import time
 from typing import Callable, List, Optional, Union
 
 import yaml
+
 from devops.lib.log import logger
 
 
@@ -250,3 +250,41 @@ def merge_docs(
         docs[i] = _merge_part(doc, overrides[i], base_overrides[i])
 
     return docs
+
+
+def get_merged_kube_file(path: Path, merge_temp: Path) -> Path:
+    """
+    Return a path to a fully merged version of the given kube file.
+
+    If the path is not a merge file it's returned as is.
+    If it's a merge file a merged copy will be stored in the given temp
+    directory and the path to the generated file will be returned.
+
+    :param path: The path to the partial file
+    :param merge_temp: A path under which the merged file will be stored
+    :return: The path to the fully merged file
+    """
+    if not (path.parts[0] == "envs" and path.parts[2] == "merges"):
+        # No merging needed
+        return path
+
+    master_file = Path().joinpath(*path.parts[3:])
+    output_file = merge_temp / path
+
+    logger.debug(f"Merging file {path} with {master_file} to {output_file}")
+
+    with master_file.open("r", encoding="utf-8") as f:
+        src = list(yaml.load_all(f, yaml.Loader))
+    with path.open("r", encoding="utf-8") as f:
+        overrides = list(yaml.load_all(f, yaml.Loader))
+    # Use the BaseLoader to get literal values, such as tilde (~).
+    with path.open("r", encoding="utf-8") as f:
+        base_overrides = list(yaml.load_all(f, yaml.BaseLoader))
+
+    merged_docs = merge_docs(src, overrides, base_overrides)
+
+    output_file.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    with output_file.open("w", encoding="utf-8") as f:
+        yaml.dump_all(merged_docs, stream=f, Dumper=yaml.Dumper)
+
+    return output_file

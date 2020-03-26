@@ -7,10 +7,11 @@ from typing import List, Optional
 
 import jinja2
 import yaml
+from invoke import Context
+
 from devops.lib.log import logger
 from devops.lib.utils import label, merge_docs, run
 from devops.settings import IMAGE_PREFIX, KUBEVAL_SKIP_KINDS, TEMPLATE_HEADER
-from invoke import Context
 
 try:
     from yaml import CBaseLoader as BaseLoader, CLoader as Loader, CDumper as Dumper
@@ -35,7 +36,7 @@ SKIP_PATCH_KUBE_KINDS = (
 RESTART_RESOURCES = ("Deployment", "DaemonSet", "StatefulSet")
 
 # How long to wait for any rollout to successfully complete before failing
-ROLLOUT_TIMEOUT = 5 * 60.0
+DEFAULT_ROLLOUT_TIMEOUT = 5 * 60.0
 
 TEMPLATE_KINDS = {"merge", "override"}
 
@@ -53,6 +54,7 @@ class Component:
         self.path = self.orig_path
         self.tag = "latest"
         self.replicas = None
+        self.rollout_timeout = DEFAULT_ROLLOUT_TIMEOUT
 
         self.kube_configs = self._get_kube_configs()
         self.kube_merges = {}
@@ -80,7 +82,7 @@ class Component:
 
         for file in self.kube_configs:
             path = self.kube_configs[file]
-            result = run(["kubeval", "--skip-kinds", skip_kinds, path])
+            result = run(["kubeval", "--strict", "--skip-kinds", skip_kinds, path])
             if result.returncode > 0:
                 raise ValidationError(f"Validation failed for {path}")
 
@@ -140,7 +142,9 @@ class Component:
 
             with old_file.open(mode="r", encoding="utf-8") as f:
                 content = f.read()
-            if content.startswith(TEMPLATE_HEADER.format(file=template_path)):
+            if content.startswith(
+                TEMPLATE_HEADER.format(file=template_path.as_posix())
+            ):
                 old_file.unlink()
                 logger.debug(f"Deleted rendered file {old_file}")
             else:
@@ -165,7 +169,7 @@ class Component:
 
             template = jinja2.Template(content, undefined=jinja2.StrictUndefined)
             try:
-                content = TEMPLATE_HEADER.format(file=template_path)
+                content = TEMPLATE_HEADER.format(file=template_path.as_posix())
                 content += template.render(jinja_context)
                 content += "\n"
             except jinja2.exceptions.UndefinedError as ex:
@@ -175,7 +179,7 @@ class Component:
                 )
 
             output_file = output_path / name
-            with output_file.open(mode="w", encoding="utf-8") as f:
+            with output_file.open(mode="w", encoding="utf-8", newline="\n") as f:
                 f.write(content)
                 rendered_files.append(output_file)
             logger.debug(f"Rendered {kind} file {output_file}")
@@ -291,7 +295,7 @@ class Component:
         if not no_rollout_wait:
             run(
                 ["kubectl", "-n", self.namespace, "rollout", "status", resource],
-                timeout=ROLLOUT_TIMEOUT,
+                timeout=self.rollout_timeout,
             )
 
     def _prepare_configs(self, dst: Path):
