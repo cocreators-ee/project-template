@@ -52,7 +52,7 @@ class Component:
         self.namespace = None
         self.orig_path = Path(path)
         self.path = self.orig_path
-        self.tag = "latest"
+        self.tag = None
         self.replicas = None
         self.rollout_timeout = DEFAULT_ROLLOUT_TIMEOUT
 
@@ -477,7 +477,7 @@ class Component:
 
     def _get_full_docker_name(self) -> str:
         docker_repository = self.get_docker_repository()
-        tag = self.tag
+        tag = self.tag or "latest"
         return f"{docker_repository}:{tag}"
 
     @staticmethod

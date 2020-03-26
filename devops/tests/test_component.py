@@ -22,7 +22,7 @@ spec:
       containers:
         - name: test-deployment
           imagePullPolicy: IfNotPresent
-          image: imagined.registry.tld/myproj-service-test-deployment:latest
+          image: imagined.registry.tld/myproj-service-test-deployment:v1
 """
 
 CRONJOB = """
@@ -125,9 +125,28 @@ def test_patch_cronjob():
 def test_handling_long_nested_image_name():
     deploy = get_deployment()
     c = Component("service/test-service")
-    c.image = "gcr.io/google-containers/etcd-amd64:3.3.10-1"
+    c.image = "gcr.io/google-containers/etcd-amd64"
     c.image_pull_secrets = {"gcr.io": "secret"}
 
     c._patch_image_pull_secrets(deploy)
     spec = deploy["spec"]["template"]["spec"]
     assert spec["imagePullSecrets"][0]["name"] == "secret"
+
+
+def test_patch_containers_with_default_tag():
+    deploy = get_deployment()
+    c = Component("service/test-service")
+    c.image_prefix = ""
+
+    c._patch_containers(deploy)
+    container = deploy["spec"]["template"]["spec"]["containers"][0]
+    assert (
+        container["image"] == "imagined.registry.tld/myproj-service-test-deployment:v1"
+    )
+
+    c.tag = "v2"
+    c._patch_containers(deploy)
+    container = deploy["spec"]["template"]["spec"]["containers"][0]
+    assert (
+        container["image"] == "imagined.registry.tld/myproj-service-test-deployment:v2"
+    )
