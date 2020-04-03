@@ -246,6 +246,35 @@ spec:
             periodSeconds: 5
 """
 
+TEST_SETTINGS_WITH_VARIABLES = (
+    TEST_SETTINGS
+    + """
+TEMPLATE_VARIABLES = {"ENV": "development"}
+"""
+)
+
+TEST_COMPONENT_PATH = Path("service/TEST_COMPONENT_LOL")
+TEST_COMPONENT_OVERRIDE_TEMPLATE_PATH = (
+    TEST_COMPONENT_PATH / "kube" / "override-templates" / "01-config.yaml"
+)
+TEST_COMPONENT_OVERRIDE_TEMPLATE = """apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-component-configs
+data:
+  ENV: "{{ ENV }}"
+"""
+TEST_COMPONENT_RENDERED_OVERRIDE_PATH = (
+    TEST_ENV_PATH / "overrides" / TEST_COMPONENT_PATH / "kube" / "01-config.yaml"
+)
+TEST_COMPONENT_RENDERED_OVERRIDE = """apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-component-configs
+data:
+  ENV: "development"
+"""
+
 
 def clean_caches():
     for path in Path(".").rglob("__pycache__"):
@@ -263,6 +292,18 @@ def clean_test_settings():
     delete_test_settings()
     yield None
     delete_test_settings()
+
+
+def delete_test_component():
+    if TEST_COMPONENT_PATH.exists():
+        rmtree(TEST_COMPONENT_PATH)
+
+
+@pytest.fixture()
+def clean_test_component():
+    delete_test_component()
+    yield None
+    delete_test_component()
 
 
 def test_load_env_settings(clean_test_settings):

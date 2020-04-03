@@ -1,5 +1,6 @@
 import importlib
 import subprocess  # nosec
+import sys
 import types
 from copy import deepcopy
 from pathlib import Path
@@ -25,6 +26,8 @@ class Settings:
 
 def load_env_settings(env: str) -> Settings:
     module = f"envs.{env}.settings"
+    if module in sys.modules:
+        del sys.modules[module]
     logger.info(f"Loading settings from {module}")
     settings = importlib.import_module(module)
 

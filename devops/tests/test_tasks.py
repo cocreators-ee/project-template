@@ -3,7 +3,7 @@ import subprocess
 import pytest
 from ruamel.yaml import YAML
 
-from devops.settings import UNSEALED_SECRETS_EXTENSION
+from devops.settings import TEMPLATE_HEADER, UNSEALED_SECRETS_EXTENSION
 from devops.tasks import (
     base64_decode_secrets,
     base64_encode_secrets,
@@ -11,12 +11,19 @@ from devops.tasks import (
     kubeval,
     seal_secrets,
     unseal_secrets,
+    update_from_templates,
 )
 from devops.tests.test_utils import (
+    TEST_COMPONENT_OVERRIDE_TEMPLATE,
+    TEST_COMPONENT_OVERRIDE_TEMPLATE_PATH,
+    TEST_COMPONENT_RENDERED_OVERRIDE,
+    TEST_COMPONENT_RENDERED_OVERRIDE_PATH,
     TEST_ENV,
     TEST_ENV_PATH,
     TEST_ENV_SETTINGS,
     TEST_SETTINGS,
+    TEST_SETTINGS_WITH_VARIABLES,
+    clean_test_component,
     clean_test_settings,
 )
 
@@ -200,3 +207,43 @@ def test_seal_unseal_secrets(clean_test_settings):
     new_decoded_secrets = yaml.load(TEST_ENV_UNSEALED_SECRETS_PATH)
     assert new_decoded_secrets["kind"] == "Secret"
     assert new_decoded_secrets["data"] == original_decoded_secrets["data"]
+
+
+def test_update_from_templates(clean_test_settings, clean_test_component):
+    TEST_ENV_PATH.mkdir(parents=True)
+    TEST_ENV_SETTINGS.write_text(TEST_SETTINGS_WITH_VARIABLES)
+
+    TEST_COMPONENT_OVERRIDE_TEMPLATE_PATH.parent.mkdir(parents=True)
+    TEST_COMPONENT_OVERRIDE_TEMPLATE_PATH.write_text(TEST_COMPONENT_OVERRIDE_TEMPLATE)
+    original_path_string = TEST_COMPONENT_OVERRIDE_TEMPLATE_PATH.as_posix()
+
+    # Check override file is generated correctly
+    assert TEST_COMPONENT_RENDERED_OVERRIDE_PATH.exists() is False
+    update_from_templates()
+    assert TEST_COMPONENT_RENDERED_OVERRIDE_PATH.exists() is True
+    rendered_content = TEST_COMPONENT_RENDERED_OVERRIDE_PATH.read_text()
+    expected_content = TEMPLATE_HEADER.format(file=original_path_string)
+    expected_content += TEST_COMPONENT_RENDERED_OVERRIDE
+    assert rendered_content == expected_content
+
+    # Check override file gets deleted if original file is deleted
+    TEST_COMPONENT_OVERRIDE_TEMPLATE_PATH.unlink()
+    assert TEST_COMPONENT_RENDERED_OVERRIDE_PATH.exists() is True
+    update_from_templates()
+    assert TEST_COMPONENT_RENDERED_OVERRIDE_PATH.exists() is False
+
+    # Re-create the template file and rendered the override file
+    TEST_COMPONENT_OVERRIDE_TEMPLATE_PATH.write_text(TEST_COMPONENT_OVERRIDE_TEMPLATE)
+    update_from_templates()
+    assert TEST_COMPONENT_RENDERED_OVERRIDE_PATH.exists() is True
+
+    # Remove the component from settings and check rendered file is removed
+    settings_without_components = "".join(
+        [
+            line if not line.startswith("COMPONENTS = [") else "COMPONENTS = []\n"
+            for line in TEST_SETTINGS_WITH_VARIABLES.splitlines(keepends=True)
+        ]
+    )
+    TEST_ENV_SETTINGS.write_text(settings_without_components)
+    update_from_templates()
+    assert TEST_COMPONENT_RENDERED_OVERRIDE_PATH.exists() is False

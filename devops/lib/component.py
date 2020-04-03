@@ -157,6 +157,8 @@ class Component:
 
         if not self.kube_templates[kind]:
             return rendered_files
+        if self.orig_path.as_posix() not in settings.COMPONENTS:
+            return rendered_files
 
         logger.info(f"Creating {kind} files for {self.name} for env {env}")
 
