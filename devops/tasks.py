@@ -45,7 +45,7 @@ def build_images(ctx, components, dry_run=False, docker_args=None):
         component.build(ctx, dry_run, docker_args)
 
 
-def update_from_templates(ctx):
+def update_from_templates():
     envs = list_envs()
 
     rendered_files = []

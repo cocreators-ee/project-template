@@ -272,7 +272,7 @@ def update_from_templates(ctx):
     Update kube yaml merges from templates
     :param Context ctx:
     """
-    devops.tasks.update_from_templates(ctx)
+    devops.tasks.update_from_templates()
 
 
 @task()
@@ -283,7 +283,7 @@ def _update_from_templates_hook(ctx):
 
     :param Context ctx:
     """
-    rendered_files = devops.tasks.update_from_templates(ctx)
+    rendered_files = devops.tasks.update_from_templates()
 
     result = run(["git", "status", "--untracked-files=all", "-s"])
     untracked_files = result.stdout.decode(encoding="utf-8").split()
