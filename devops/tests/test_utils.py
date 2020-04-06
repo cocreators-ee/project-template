@@ -11,18 +11,11 @@ import yaml
 from devops.lib.utils import list_envs, load_env_settings, merge_docs, run
 from devops.tests.conftest import (
     ENVS_PATH,
-    TEST_COMPONENT_PATH,
     TEST_ENV,
     TEST_ENV_PATH,
+    TEST_ENV_SETTINGS,
+    TEST_SETTINGS,
 )
-
-TEST_ENV_SETTINGS = TEST_ENV_PATH / "settings.py"
-
-TEST_SETTINGS = """
-COMPONENTS = ["service/TEST_COMPONENT_LOL"]
-KUBE_CONTEXT = "TEST_CONTEXT_LOL"
-KUBE_NAMESPACE = "TEST_NAMESPACE_LOL"
-"""
 
 TEST_FULL_SETTINGS = (
     TEST_SETTINGS
@@ -247,34 +240,6 @@ spec:
                - /tmp/healthy
             initialDelaySeconds: 5
             periodSeconds: 5
-"""
-
-TEST_SETTINGS_WITH_VARIABLES = (
-    TEST_SETTINGS
-    + """
-TEMPLATE_VARIABLES = {"ENV": "development"}
-"""
-)
-
-TEST_COMPONENT_OVERRIDE_TEMPLATE_PATH = (
-    TEST_COMPONENT_PATH / "kube" / "override-templates" / "01-config.yaml"
-)
-TEST_COMPONENT_OVERRIDE_TEMPLATE = """apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: test-component-configs
-data:
-  ENV: "{{ ENV }}"
-"""
-TEST_COMPONENT_RENDERED_OVERRIDE_PATH = (
-    TEST_ENV_PATH / "overrides" / TEST_COMPONENT_PATH / "kube" / "01-config.yaml"
-)
-TEST_COMPONENT_RENDERED_OVERRIDE = """apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: test-component-configs
-data:
-  ENV: "development"
 """
 
 

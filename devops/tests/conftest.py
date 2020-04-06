@@ -6,8 +6,15 @@ import pytest
 ENVS_PATH = Path("envs")
 TEST_ENV = "unit_test_env_6zxuj"
 TEST_ENV_PATH = ENVS_PATH / TEST_ENV
+TEST_ENV_SETTINGS = TEST_ENV_PATH / "settings.py"
 
 TEST_COMPONENT_PATH = Path("service/TEST_COMPONENT_LOL")
+
+TEST_SETTINGS = """
+COMPONENTS = ["service/TEST_COMPONENT_LOL"]
+KUBE_CONTEXT = "TEST_CONTEXT_LOL"
+KUBE_NAMESPACE = "TEST_NAMESPACE_LOL"
+"""
 
 
 @pytest.fixture()

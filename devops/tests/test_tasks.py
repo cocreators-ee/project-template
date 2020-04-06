@@ -13,16 +13,46 @@ from devops.tasks import (
     unseal_secrets,
     update_from_templates,
 )
-from devops.tests.conftest import TEST_ENV, TEST_ENV_PATH
-from devops.tests.test_utils import (
-    TEST_COMPONENT_OVERRIDE_TEMPLATE,
-    TEST_COMPONENT_OVERRIDE_TEMPLATE_PATH,
-    TEST_COMPONENT_RENDERED_OVERRIDE,
-    TEST_COMPONENT_RENDERED_OVERRIDE_PATH,
+from devops.tests.conftest import (
+    TEST_COMPONENT_PATH,
+    TEST_ENV,
+    TEST_ENV_PATH,
     TEST_ENV_SETTINGS,
     TEST_SETTINGS,
-    TEST_SETTINGS_WITH_VARIABLES,
 )
+
+TEST_SETTINGS_WITH_VARIABLES = (
+    TEST_SETTINGS
+    + """
+TEMPLATE_VARIABLES = {"ENV": "development"}
+"""
+)
+
+TEST_COMPONENT_OVERRIDE_TEMPLATE_PATH = (
+    TEST_COMPONENT_PATH / "kube" / "override-templates" / "01-config.yaml"
+)
+
+TEST_COMPONENT_OVERRIDE_TEMPLATE = """apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-component-configs
+data:
+  ENV: "{{ ENV }}"
+"""
+
+
+TEST_COMPONENT_RENDERED_OVERRIDE_PATH = (
+    TEST_ENV_PATH / "overrides" / TEST_COMPONENT_PATH / "kube" / "01-config.yaml"
+)
+
+TEST_COMPONENT_RENDERED_OVERRIDE = """apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-component-configs
+data:
+  ENV: "development"
+"""
+
 
 TEST_ENV_SECRETS_PATH = TEST_ENV_PATH / "secrets"
 TEST_ENV_SEALED_SECRETS_PATH = TEST_ENV_SECRETS_PATH / "01-test-secrets.yaml"
