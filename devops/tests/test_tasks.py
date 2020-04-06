@@ -13,18 +13,15 @@ from devops.tasks import (
     unseal_secrets,
     update_from_templates,
 )
+from devops.tests.conftest import TEST_ENV, TEST_ENV_PATH
 from devops.tests.test_utils import (
     TEST_COMPONENT_OVERRIDE_TEMPLATE,
     TEST_COMPONENT_OVERRIDE_TEMPLATE_PATH,
     TEST_COMPONENT_RENDERED_OVERRIDE,
     TEST_COMPONENT_RENDERED_OVERRIDE_PATH,
-    TEST_ENV,
-    TEST_ENV_PATH,
     TEST_ENV_SETTINGS,
     TEST_SETTINGS,
     TEST_SETTINGS_WITH_VARIABLES,
-    clean_test_component,
-    clean_test_settings,
 )
 
 TEST_ENV_SECRETS_PATH = TEST_ENV_PATH / "secrets"

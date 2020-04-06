@@ -9,10 +9,13 @@ import pytest
 import yaml
 
 from devops.lib.utils import list_envs, load_env_settings, merge_docs, run
+from devops.tests.conftest import (
+    ENVS_PATH,
+    TEST_COMPONENT_PATH,
+    TEST_ENV,
+    TEST_ENV_PATH,
+)
 
-ENVS_PATH = Path("envs")
-TEST_ENV = "unit_test_env_6zxuj"
-TEST_ENV_PATH = ENVS_PATH / TEST_ENV
 TEST_ENV_SETTINGS = TEST_ENV_PATH / "settings.py"
 
 TEST_SETTINGS = """
@@ -253,7 +256,6 @@ TEMPLATE_VARIABLES = {"ENV": "development"}
 """
 )
 
-TEST_COMPONENT_PATH = Path("service/TEST_COMPONENT_LOL")
 TEST_COMPONENT_OVERRIDE_TEMPLATE_PATH = (
     TEST_COMPONENT_PATH / "kube" / "override-templates" / "01-config.yaml"
 )
@@ -280,30 +282,6 @@ def clean_caches():
     for path in Path(".").rglob("__pycache__"):
         rmtree(path)
     invalidate_caches()
-
-
-def delete_test_settings():
-    if TEST_ENV_PATH.exists():
-        rmtree(TEST_ENV_PATH)
-
-
-@pytest.fixture()
-def clean_test_settings():
-    delete_test_settings()
-    yield None
-    delete_test_settings()
-
-
-def delete_test_component():
-    if TEST_COMPONENT_PATH.exists():
-        rmtree(TEST_COMPONENT_PATH)
-
-
-@pytest.fixture()
-def clean_test_component():
-    delete_test_component()
-    yield None
-    delete_test_component()
 
 
 def test_load_env_settings(clean_test_settings):
