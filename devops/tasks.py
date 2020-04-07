@@ -45,15 +45,24 @@ def build_images(ctx, components, dry_run=False, docker_args=None):
         component.build(ctx, dry_run, docker_args)
 
 
-def update_from_templates(ctx):
+def update_from_templates():
     envs = list_envs()
 
     rendered_files = []
     for env in envs:
         settings = load_env_settings(env)
-        components = settings.COMPONENTS
+        enabled_components = set(settings.COMPONENTS)
 
-        for path in components:
+        components_in_filesystem = {
+            p.parent.relative_to("envs", env, "merges").as_posix()
+            for p in Path("envs", env, "merges").glob("**/kube")
+        }
+        components_in_filesystem |= {
+            p.parent.relative_to("envs", env, "overrides").as_posix()
+            for p in Path("envs", env, "overrides").glob("**/kube")
+        }
+
+        for path in enabled_components | components_in_filesystem:
             component = Component(path)
             rendered_files.extend(component.render_templates(env, settings))
 
