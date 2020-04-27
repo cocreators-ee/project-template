@@ -381,7 +381,7 @@ def get_master_key(ctx, env):
     :param invoke.Context ctx: The invoke context.
     :param str env: The environment (one from /envs/)
     """
-    devops.tasks.get_master_key(env=env)
+    devops.tasks.get_master_key(env=env, use_existing=False)
 
 
 @task(iterable=["env"])
@@ -403,7 +403,9 @@ def unseal_secrets(ctx, env, all_envs=False):
         envs = list_envs()
     else:
         envs = {e.strip() for es in env for e in es.split(",")}
-    devops.tasks.unseal_secrets(envs=envs)
+
+    for env in envs:
+        devops.tasks.unseal_secrets(env=env)
 
 
 @task(iterable=["env"])
@@ -426,4 +428,6 @@ def seal_secrets(ctx, env, all_envs=False, only_changed=False):
         envs = list_envs()
     else:
         envs = {e.strip() for es in env for e in es.split(",")}
-    devops.tasks.seal_secrets(envs=envs, only_changed=only_changed)
+
+    for env in envs:
+        devops.tasks.seal_secrets(env=env, only_changed=only_changed)

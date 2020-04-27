@@ -282,7 +282,7 @@ def kubeval(keep_configs=False):
         logger.info(f"Keeping temporary kube merges in {merge_tmp}")
 
 
-def get_master_key(env: str, use_existing=False) -> Path:
+def get_master_key(env: str, use_existing=True) -> Path:
     """
     Get the master key for SealedSecrets for the given env.
 
@@ -324,85 +324,79 @@ def get_master_key(env: str, use_existing=False) -> Path:
     return master_key_file
 
 
-def unseal_secrets(envs: Iterable[str]) -> None:
+def unseal_secrets(env: str) -> None:
     """
     Decrypts the secrets for the desired env and base64 decodes them to make
     them easy to edit.
 
-    :param Iterable[str] envs: The environments.
+    :param str env: The environment.
     """
     # Validate env
-    for env in envs:
-        load_env_settings(env)
+    load_env_settings(env)
 
-        master_key = get_master_key(env=env, use_existing=True)
-        secrets_pem = secrets_pem_path(env=env)
+    master_key = get_master_key(env=env)
+    secrets_pem = secrets_pem_path(env=env)
 
-        sealed_secret_files = [
-            secret_file
-            for secret_file in (Path("envs") / env / "secrets").glob("*.yaml")
-            if not secret_file.name.endswith(UNSEALED_SECRETS_EXTENSION)
-        ]
+    sealed_secret_files = [
+        secret_file
+        for secret_file in (Path("envs") / env / "secrets").glob("*.yaml")
+        if not secret_file.name.endswith(UNSEALED_SECRETS_EXTENSION)
+    ]
 
-        label(logger.info, f"Unsealing secrets for {env}")
+    label(logger.info, f"Unsealing secrets for {env}")
 
-        for input_file in sealed_secret_files:
-            output_file = input_file.with_name(
-                input_file.stem + UNSEALED_SECRETS_EXTENSION
-            )
+    for input_file in sealed_secret_files:
+        output_file = input_file.with_name(input_file.stem + UNSEALED_SECRETS_EXTENSION)
 
-            logger.info(f"Unsealing {input_file} to {output_file}")
+        logger.info(f"Unsealing {input_file} to {output_file}")
 
-            content = input_file.read_text(encoding="utf-8")
+        content = input_file.read_text(encoding="utf-8")
 
-            content = kube_unseal(content, master_key, cert=secrets_pem)
-            content = base64_decode_secrets(content)
+        content = kube_unseal(content, master_key, cert=secrets_pem)
+        content = base64_decode_secrets(content)
 
-            output_file.write_text(content, encoding="utf-8")
+        output_file.write_text(content, encoding="utf-8")
 
 
-def seal_secrets(envs: Iterable[str], only_changed=False) -> None:
+def seal_secrets(env: str, only_changed=False) -> None:
     """
-    Base64 encodes and seals the secrets for the desired envs.
+    Base64 encodes and seals the secrets for the desired env.
 
-    :param Iterable[str] envs: The environments.
+    :param str env: The environment.
     :param bool only_changed: Reseal only changed secrets.
     """
-    for env in envs:
-        # Validate env
-        load_env_settings(env)
+    # Validate env
+    load_env_settings(env)
 
-        secrets_pem = secrets_pem_path(env=env)
+    secrets_pem = secrets_pem_path(env=env)
 
-        unsealed_secret_files = (Path("envs") / env / "secrets").glob(
-            f"*{UNSEALED_SECRETS_EXTENSION}"
-        )
+    unsealed_secret_files = (Path("envs") / env / "secrets").glob(
+        f"*{UNSEALED_SECRETS_EXTENSION}"
+    )
 
-        label(logger.info, f"Sealing secrets for {env}")
+    label(logger.info, f"Sealing secrets for {env}")
 
-        for input_file in unsealed_secret_files:
-            output_file_name = (
-                input_file.name[: -len(UNSEALED_SECRETS_EXTENSION)] + ".yaml"
+    for input_file in unsealed_secret_files:
+        output_file_name = input_file.name[: -len(UNSEALED_SECRETS_EXTENSION)] + ".yaml"
+        output_file = input_file.with_name(output_file_name)
+
+        logger.info(f"Sealing {input_file} as {output_file}")
+
+        content = input_file.read_text(encoding="utf-8")
+        content = base64_encode_secrets(content)
+        sealed_content = kube_seal(content, cert=secrets_pem)
+
+        if only_changed:
+            master_key = get_master_key(env=env)
+            sealed_original_content = output_file.read_text(encoding="utf-8")
+            original_content = kube_unseal(
+                sealed_original_content, master_key, cert=secrets_pem
             )
-            output_file = input_file.with_name(output_file_name)
+            sealed_content = _revert_unchanged_secrets(
+                content, sealed_content, original_content, sealed_original_content
+            )
 
-            logger.info(f"Sealing {input_file} as {output_file}")
-
-            content = input_file.read_text(encoding="utf-8")
-            content = base64_encode_secrets(content)
-            sealed_content = kube_seal(content, cert=secrets_pem)
-
-            if only_changed:
-                master_key = get_master_key(env=env, use_existing=True)
-                sealed_original_content = output_file.read_text(encoding="utf-8")
-                original_content = kube_unseal(
-                    sealed_original_content, master_key, cert=secrets_pem
-                )
-                sealed_content = _revert_unchanged_secrets(
-                    content, sealed_content, original_content, sealed_original_content
-                )
-
-            output_file.write_text(sealed_content, encoding="utf-8")
+        output_file.write_text(sealed_content, encoding="utf-8")
 
 
 def _revert_unchanged_secrets(

@@ -221,13 +221,13 @@ def test_seal_unseal_secrets(clean_test_settings):
     TEST_ENV_SECRETS_PATH.mkdir()
     TEST_ENV_UNSEALED_SECRETS_PATH.write_text(BASE64_DECODED_SECRETS, encoding="utf-8")
 
-    seal_secrets([TEST_ENV])
+    seal_secrets(TEST_ENV)
     TEST_ENV_UNSEALED_SECRETS_PATH.unlink()
     assert TEST_ENV_SEALED_SECRETS_PATH.exists()
     sealed_secrets = yaml.load(TEST_ENV_SEALED_SECRETS_PATH)
     assert sealed_secrets["kind"] == "SealedSecret"
 
-    unseal_secrets([TEST_ENV])
+    unseal_secrets(TEST_ENV)
 
     assert TEST_ENV_UNSEALED_SECRETS_PATH.exists()
 
@@ -237,12 +237,12 @@ def test_seal_unseal_secrets(clean_test_settings):
 
     # Check the sealed files are identical if only changed secrets are to be updated
     original_sealed_content = TEST_ENV_SEALED_SECRETS_PATH.read_text(encoding="utf-8")
-    seal_secrets([TEST_ENV], only_changed=True)
+    seal_secrets(TEST_ENV, only_changed=True)
     resealed_content = TEST_ENV_SEALED_SECRETS_PATH.read_text(encoding="utf-8")
     assert original_sealed_content == resealed_content
 
     # ... and not identical if all secrets should be updated
-    seal_secrets([TEST_ENV], only_changed=False)
+    seal_secrets(TEST_ENV, only_changed=False)
     resealed_content = TEST_ENV_SEALED_SECRETS_PATH.read_text(encoding="utf-8")
     assert original_sealed_content != resealed_content
 
