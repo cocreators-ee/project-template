@@ -3,7 +3,7 @@ import random
 import string
 from pathlib import Path
 from shutil import rmtree
-from typing import Iterable, List
+from typing import List
 
 import pytimeparse
 import yaml
