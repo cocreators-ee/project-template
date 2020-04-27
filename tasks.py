@@ -384,28 +384,45 @@ def get_master_key(ctx, env):
     devops.tasks.get_master_key(env=env)
 
 
-@task()
-def unseal_secrets(ctx, env):
-    """Decrypts the secrets for the desired env and base64 decodes them to make
+@task(iterable=["env"])
+def unseal_secrets(ctx, env, all_envs=False):
+    """Decrypts the secrets for the desired env(s) and base64 decodes them to make
     them easy to edit.
 
     Examples:
-    poetry run invoke secrets.unseal-secrets --env staging
+    poetry run invoke unseal-secrets --env staging
+    poetry run invoke unseal-secrets --env staging --env production
+    poetry run invoke unseal-secrets --env staging,production
+    poetry run invoke unseal-secrets --all-envs
 
     :param invoke.Context ctx: The invoke context.
-    :param str env: The environment.
+    :param List[str] env: A list of the environments.
+    :param bool all_envs: Use all envs.
     """
-    devops.tasks.unseal_secrets(env=env)
+    if all_envs:
+        envs = list_envs()
+    else:
+        envs = {e.strip() for es in env for e in es.split(",")}
+    devops.tasks.unseal_secrets(envs=envs)
 
 
-@task()
-def seal_secrets(ctx, env):
-    """Base64 encodes and seals the secrets for the desired env.
+@task(iterable=["env"])
+def seal_secrets(ctx, env, all_envs=False, only_changed=False):
+    """Base64 encodes and seals the secrets for the desired env(s).
 
     Examples:
-    poetry run invoke secrets.seal-secrets --env staging
+    poetry run invoke seal-secrets --env staging
+    poetry run invoke seal-secrets --env staging --env production
+    poetry run invoke seal-secrets --env staging,production
+    poetry run invoke seal-secrets --all-envs
 
     :param invoke.Context ctx: The invoke context.
-    :param str env: The environment.
+    :param List[str] env: A list of the environments.
+    :param bool all_envs: Use all envs.
+    :param bool only_changed: Only reseal changed secrets.
     """
-    devops.tasks.seal_secrets(env=env)
+    if all_envs:
+        envs = list_envs()
+    else:
+        envs = {e.strip() for es in env for e in es.split(",")}
+    devops.tasks.seal_secrets(envs=envs, only_changed=only_changed)
