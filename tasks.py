@@ -412,6 +412,7 @@ def seal_secrets(ctx, env, all_envs=False, only_changed=False):
 
     Examples:
     poetry run invoke seal-secrets --env staging
+    poetry run invoke seal-secrets --env staging --only-changed
     poetry run invoke seal-secrets --env staging --env production
     poetry run invoke seal-secrets --env staging,production
     poetry run invoke seal-secrets --all-envs
