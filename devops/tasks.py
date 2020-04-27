@@ -6,6 +6,7 @@ from shutil import rmtree
 from typing import List
 
 import pytimeparse
+import yaml
 from invoke import Context
 from ruamel.yaml import YAML
 from ruamel.yaml.compat import StringIO
@@ -281,13 +282,20 @@ def kubeval(keep_configs=False):
         logger.info(f"Keeping temporary kube merges in {merge_tmp}")
 
 
-def get_master_key(env: str) -> None:
+def get_master_key(env: str, use_existing=True) -> Path:
     """
     Get the master key for SealedSecrets for the given env.
 
     :param str env: The environment
+    :param bool use_existing: If set to True, tries to use existing key from filesystem
+    instead of fetching a new one from the cluster.
+    :return Path: The path to the master key
     """
     settings = load_env_settings(env)
+    master_key_file = master_key_path(env=env)
+    if use_existing and master_key_file.exists():
+        return master_key_file
+
     ensure_context(settings.KUBE_CONTEXT)
 
     label(logger.info, f"Getting master key for {env}")
@@ -309,11 +317,11 @@ def get_master_key(env: str) -> None:
     )
 
     content = result.stdout.decode(encoding="utf-8")
-    output_file = master_key_path(env=env)
 
-    logger.info(f"Saving master key to {output_file}")
+    logger.info(f"Saving master key to {master_key_file}")
 
-    output_file.write_text(content, encoding="utf-8")
+    master_key_file.write_text(content, encoding="utf-8")
+    return master_key_file
 
 
 def unseal_secrets(env: str) -> None:
@@ -326,11 +334,8 @@ def unseal_secrets(env: str) -> None:
     # Validate env
     load_env_settings(env)
 
-    master_key = master_key_path(env=env)
+    master_key = get_master_key(env=env)
     secrets_pem = secrets_pem_path(env=env)
-
-    if not master_key.exists():
-        get_master_key(env=env)
 
     sealed_secret_files = [
         secret_file
@@ -353,11 +358,12 @@ def unseal_secrets(env: str) -> None:
         output_file.write_text(content, encoding="utf-8")
 
 
-def seal_secrets(env: str) -> None:
+def seal_secrets(env: str, only_changed=False) -> None:
     """
     Base64 encodes and seals the secrets for the desired env.
 
     :param str env: The environment.
+    :param bool only_changed: Reseal only changed secrets.
     """
     # Validate env
     load_env_settings(env)
@@ -377,11 +383,52 @@ def seal_secrets(env: str) -> None:
         logger.info(f"Sealing {input_file} as {output_file}")
 
         content = input_file.read_text(encoding="utf-8")
-
         content = base64_encode_secrets(content)
-        content = kube_seal(content, cert=secrets_pem)
+        sealed_content = kube_seal(content, cert=secrets_pem)
 
-        output_file.write_text(content, encoding="utf-8")
+        if only_changed:
+            master_key = get_master_key(env=env)
+            sealed_original_content = output_file.read_text(encoding="utf-8")
+            original_content = kube_unseal(
+                sealed_original_content, master_key, cert=secrets_pem
+            )
+            sealed_content = _revert_unchanged_secrets(
+                content, sealed_content, original_content, sealed_original_content
+            )
+
+        output_file.write_text(sealed_content, encoding="utf-8")
+
+
+def _revert_unchanged_secrets(
+    new_content: str,
+    new_sealed_content: str,
+    original_content: str,
+    sealed_original_content: str,
+) -> str:
+    """
+    Reverts the sealed version of each secrets to the original version if the actual
+    value is unchanged in order to give nicer diffs.
+
+    :param str new_content: The yaml document containing the new unsealed content.
+    :param str new_sealed_content: The yaml document containing the new sealed content.
+    :param str original_content: The yaml document containing the original unsealed
+    content.
+    :param str sealed_original_content: The yaml document containing the original sealed
+    content.
+    :return str: A sealed yaml document containing secrets from sealed_original_content
+    and new_sealed_content.
+    """
+    new_content = yaml.safe_load(new_content)
+    new_sealed_content = yaml.safe_load(new_sealed_content)
+    original_content = yaml.safe_load(original_content)
+    sealed_original_content = yaml.safe_load(sealed_original_content)
+
+    for key, value in new_content["data"].items():
+        if key in original_content["data"] and original_content["data"][key] == value:
+            orig_value = sealed_original_content["spec"]["encryptedData"][key]
+            new_sealed_content["spec"]["encryptedData"][key] = orig_value
+
+    return yaml.safe_dump(new_sealed_content)
 
 
 def base64_decode_secrets(content: str) -> str:
@@ -391,8 +438,8 @@ def base64_decode_secrets(content: str) -> str:
     :param content: The content of the yaml file
     :return str: The base64 decoded version of the yaml file
     """
-    yaml = YAML()
-    secrets = yaml.load(content)
+    ruamel_yaml = YAML()
+    secrets = ruamel_yaml.load(content)
 
     data = secrets["data"]
     for key, value in data.items():
@@ -407,7 +454,7 @@ def base64_decode_secrets(content: str) -> str:
             data[key] = value
 
     stream = StringIO()
-    yaml.dump(secrets, stream)
+    ruamel_yaml.dump(secrets, stream)
     return stream.getvalue().rstrip() + "\n"
 
 
@@ -418,8 +465,8 @@ def base64_encode_secrets(content: str) -> str:
     :return str: The readable version of the yaml file.
     """
 
-    yaml = YAML()
-    secrets = yaml.load(content)
+    ruamel_yaml = YAML()
+    secrets = ruamel_yaml.load(content)
 
     data = secrets["data"]
     for key, value in data.items():
@@ -428,7 +475,7 @@ def base64_encode_secrets(content: str) -> str:
             data[key] = PlainScalarString(value)
 
     stream = StringIO()
-    yaml.dump(secrets, stream)
+    ruamel_yaml.dump(secrets, stream)
     return stream.getvalue().rstrip() + "\n"
 
 

@@ -228,12 +228,26 @@ def test_seal_unseal_secrets(clean_test_settings):
     assert sealed_secrets["kind"] == "SealedSecret"
 
     unseal_secrets(TEST_ENV)
-    TEST_ENV_SEALED_SECRETS_PATH.unlink()
+
     assert TEST_ENV_UNSEALED_SECRETS_PATH.exists()
 
     new_decoded_secrets = yaml.load(TEST_ENV_UNSEALED_SECRETS_PATH)
     assert new_decoded_secrets["kind"] == "Secret"
     assert new_decoded_secrets["data"] == original_decoded_secrets["data"]
+
+    # Check the sealed files are identical if only changed secrets are to be updated
+    original_sealed_content = TEST_ENV_SEALED_SECRETS_PATH.read_text(encoding="utf-8")
+    seal_secrets(TEST_ENV, only_changed=True)
+    resealed_content = TEST_ENV_SEALED_SECRETS_PATH.read_text(encoding="utf-8")
+    assert original_sealed_content == resealed_content
+
+    # ... and not identical if all secrets should be updated
+    seal_secrets(TEST_ENV, only_changed=False)
+    resealed_content = TEST_ENV_SEALED_SECRETS_PATH.read_text(encoding="utf-8")
+    assert original_sealed_content != resealed_content
+
+    TEST_ENV_SEALED_SECRETS_PATH.unlink()
+    TEST_ENV_UNSEALED_SECRETS_PATH.unlink()
 
 
 def test_update_from_templates(clean_test_settings, clean_test_component):

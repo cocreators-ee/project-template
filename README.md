@@ -511,6 +511,7 @@ poetry run invoke seal-secrets --env <env>
 This will base64 encode all the values and then seal the secrets using `envs/<env>/secrets.pem`.
 
 Note that also unchanged secrets will show up as changed in the SealedSecrets yaml file due to how kubeseal works.
+This can be mitigated using the `--only-changed` flag, which requires the `master.key` (or sufficient privileges to retrieve it from the cluster).
 
 
 ### License
