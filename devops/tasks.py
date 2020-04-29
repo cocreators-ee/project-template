@@ -1,4 +1,3 @@
-import base64
 import random
 import string
 from pathlib import Path
@@ -15,12 +14,15 @@ from ruamel.yaml.scalarstring import LiteralScalarString, PlainScalarString
 from devops.lib.component import Component
 from devops.lib.log import logger
 from devops.lib.utils import (
+    base64decode,
+    base64encode,
     big_label,
     get_merged_kube_file,
     label,
     list_envs,
     load_env_settings,
     master_key_path,
+    normalize_line_endings,
     run,
     secrets_pem_path,
 )
@@ -71,6 +73,9 @@ def update_from_templates():
 
 
 def validate_release_configs(ctx):
+    """
+    Validate kubernetes configs generated for all environments
+    """
     envs = list_envs()
     for env in envs:
         logger.info("Validating configs for {} environment".format(env))
@@ -405,8 +410,8 @@ def seal_secrets(env: str, only_changed=False) -> None:
 def _revert_unchanged_secrets(
     new_content: str,
     new_sealed_content: str,
-    original_content: str,
-    sealed_original_content: str,
+    orig_content: str,
+    sealed_orig_content: str,
 ) -> str:
     """
     Reverts the sealed version of each secrets to the original version if the actual
@@ -414,22 +419,26 @@ def _revert_unchanged_secrets(
 
     :param str new_content: The yaml document containing the new unsealed content.
     :param str new_sealed_content: The yaml document containing the new sealed content.
-    :param str original_content: The yaml document containing the original unsealed
+    :param str orig_content: The yaml document containing the original unsealed
     content.
-    :param str sealed_original_content: The yaml document containing the original sealed
+    :param str sealed_orig_content: The yaml document containing the original sealed
     content.
     :return str: A sealed yaml document containing secrets from sealed_original_content
     and new_sealed_content.
     """
     new_content = yaml.safe_load(new_content)
     new_sealed_content = yaml.safe_load(new_sealed_content)
-    original_content = yaml.safe_load(original_content)
-    sealed_original_content = yaml.safe_load(sealed_original_content)
+    orig_content = yaml.safe_load(orig_content)
+    sealed_orig_content = yaml.safe_load(sealed_orig_content)
 
-    for key, value in new_content["data"].items():
-        if key in original_content["data"] and original_content["data"][key] == value:
-            orig_value = sealed_original_content["spec"]["encryptedData"][key]
-            new_sealed_content["spec"]["encryptedData"][key] = orig_value
+    for key, new_b64 in new_content["data"].items():
+        if key in orig_content["data"]:
+            orig_b64 = orig_content["data"][key]
+            new = base64decode(new_b64)
+            orig = base64decode(orig_b64)
+            if normalize_line_endings(orig) == normalize_line_endings(new):
+                orig_sealed_value = sealed_orig_content["spec"]["encryptedData"][key]
+                new_sealed_content["spec"]["encryptedData"][key] = orig_sealed_value
 
     return yaml.safe_dump(new_sealed_content)
 
@@ -447,7 +456,7 @@ def base64_decode_secrets(content: str) -> str:
     data = secrets["data"]
     for key, value in data.items():
         if value is not None:
-            value = base64.b64decode(value.encode("utf-8")).decode("utf-8")
+            value = base64decode(value)
             if "\n" in value:
                 # If there's a line break in the value we want to dump it using
                 # the literal syntax. This will use the pipe symbol (|) to
@@ -474,7 +483,7 @@ def base64_encode_secrets(content: str) -> str:
     data = secrets["data"]
     for key, value in data.items():
         if value is not None:
-            value = base64.b64encode(value.encode("utf-8")).decode("utf-8")
+            value = base64encode(value)
             data[key] = PlainScalarString(value)
 
     stream = StringIO()

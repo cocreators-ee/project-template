@@ -1,3 +1,4 @@
+import base64
 import importlib
 import subprocess  # nosec
 import sys
@@ -291,3 +292,38 @@ def get_merged_kube_file(path: Path, merge_temp: Path) -> Path:
         yaml.dump_all(merged_docs, stream=f, Dumper=yaml.Dumper)
 
     return output_file
+
+
+def normalize_line_endings(data: str) -> str:
+    """
+    Normalize line endings of given input to \n, same universal format as used in
+    PEP 278 -- Universal Newline Support.
+
+    :param data: A string with Unix, Windows or Mac newlines.
+    :return: A string with universal (Unix) newlines.
+    """
+    unix_nl = "\n"
+    windows_nl = "\r\n"
+    mac_nl = "\r"
+
+    return data.replace(windows_nl, unix_nl).replace(mac_nl, unix_nl)
+
+
+def base64decode(data: str) -> str:
+    """
+    Base64 decode a string.
+
+    :param data: The base64 encoded string.
+    :return: The decoded string.
+    """
+    return base64.b64decode(data.encode()).decode()
+
+
+def base64encode(data: str) -> str:
+    """
+    Base64 encode a string.
+
+    :param data: The decoded string.
+    :return: The base64 encoded string.
+    """
+    return base64.b64encode(data.encode()).decode()
