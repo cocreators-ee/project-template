@@ -87,6 +87,35 @@ metadata:
 type: Opaque
 """
 
+BASE64_DECODED_CLUSTER_WIDE_SECRETS = """
+apiVersion: v1
+data:
+  password: abcåäö
+  private_key: |
+    -----BEGIN RSA PRIVATE KEY-----
+    MIICXgIBAAKBgQDGWkiZd7sILeW2NszfkTahxoYKFqj8TfPOX4rLwhCJr0OkppnZ
+    oePopFzkyqXS+q1UrQ5qoxF25ks0hDoYW7bTlTxyBOiVZ9BqelJP+jMRlaDFOQV3
+    SPlSip4SAbUgey69SyXik4ZxZTP8+vSy5MoqBe0ZpH7u5U3gNIYfGfJF6QIDAQAB
+    AoGAMwNPPqELahwbwxQu9qSrL0oWeQvA5DrMJFxwHt1HUZHQzMzILq+zJMb42SLB
+    KRStdWSYm5ZazICIAPas1kzoJOhRnZnh8iwwkoyCtjjUJ9leZAxoLZqx2cKu9O3f
+    8Hlr/52erNs/qpi59NmyN5N3XqZcgmK63kTZM0NxRjf1tQECQQDvieSWKyJai+zW
+    jLZ7OnmxZbR6oSlIJ08+ZuPKj19jYjocvajD3T2DoNSMqOf32JD3buk7Wwydne5S
+    +Kg8CfaJAkEA0/vSiDfCspTm6LkeapkEjm2Pdp+Rzletx3FvDqB8d2cJ0Rm9gr01
+    RcOdghH/LamG/I2UKg8bMfX2J4hOMFX8YQJBAOAPRehJlKrJs9HEcXS279nF3pnO
+    YgUB8BfYuj5g+cLGwMDdjx0Wt1GGgQrJe6HTy1YHQtaohhZxAdpOiV8PmrECQQCY
+    rmEF8buO6oaiCmto9ct9VlYlZ2saRraI1x/ZVigvzAwbCkIf/212UR2KSLIVzmvG
+    Tabw4C6DPpfMA3XlhJkhAkEAoIcAcIwMxj2i46WdlSL8zt/5EAgeF0jdCLJPU6J5
+    xrbc46CIEyiNKpyhIdDOcZqsUevytVTyOxSnnsOYBdW5LA==
+    -----END RSA PRIVATE KEY-----
+kind: Secret
+metadata:
+  annotations:
+    sealedsecrets.bitnami.com/cluster-wide: 'true'
+  name: test-secrets
+  namespace: default
+type: Opaque
+"""
+
 TEST_ENV_SECRETS_PEM = TEST_ENV_PATH / "secrets.pem"
 
 SECRETS_PEM = """
@@ -209,9 +238,12 @@ def test_get_master_key(clean_test_settings, monkeypatch):
     assert TEST_ENV_MASTER_KEY.read_text(encoding="utf-8") == MASTER_KEY
 
 
-def test_seal_unseal_secrets(clean_test_settings):
+@pytest.mark.parametrize(
+    "decoded_secrets", [BASE64_DECODED_SECRETS, BASE64_DECODED_CLUSTER_WIDE_SECRETS]
+)
+def test_seal_unseal_secrets(clean_test_settings, decoded_secrets):
     yaml = YAML()
-    original_decoded_secrets = yaml.load(BASE64_DECODED_SECRETS)
+    original_decoded_secrets = yaml.load(decoded_secrets)
     assert original_decoded_secrets["kind"] == "Secret"
 
     TEST_ENV_PATH.mkdir(parents=True)
@@ -219,7 +251,7 @@ def test_seal_unseal_secrets(clean_test_settings):
     TEST_ENV_MASTER_KEY.write_text(MASTER_KEY)
     TEST_ENV_SECRETS_PEM.write_text(SECRETS_PEM)
     TEST_ENV_SECRETS_PATH.mkdir()
-    TEST_ENV_UNSEALED_SECRETS_PATH.write_text(BASE64_DECODED_SECRETS, encoding="utf-8")
+    TEST_ENV_UNSEALED_SECRETS_PATH.write_text(decoded_secrets, encoding="utf-8")
 
     seal_secrets(TEST_ENV)
     TEST_ENV_UNSEALED_SECRETS_PATH.unlink()

@@ -395,6 +395,9 @@ def seal_secrets(env: str, only_changed=False) -> None:
             sealed_content = _revert_unchanged_secrets(
                 content, sealed_content, original_content, sealed_original_content
             )
+        else:
+            # Load and dump yaml to ensure consistent formatting with above
+            sealed_content = yaml.safe_dump(yaml.safe_load(sealed_content))
 
         output_file.write_text(sealed_content, encoding="utf-8")
 
