@@ -8,7 +8,15 @@ from shutil import rmtree
 import pytest
 import yaml
 
-from devops.lib.utils import list_envs, load_env_settings, merge_docs, run
+from devops.lib.utils import (
+    base64decode,
+    base64encode,
+    list_envs,
+    load_env_settings,
+    merge_docs,
+    normalize_line_endings,
+    run,
+)
 from devops.tests.conftest import (
     ENVS_PATH,
     TEST_ENV,
@@ -328,3 +336,20 @@ def test_list_envs(folder):
         assert "minikube" in envs
     finally:
         path.rmdir()
+
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        ("foo\r\nbar", "foo\nbar"),
+        ("\rfoo\nbar\r\n", "\nfoo\nbar\n"),
+        ("\r\rfoo\r\nbar\n\r", "\n\nfoo\nbar\n\n"),
+    ],
+)
+def test_normalize_line_endings(text, expected):
+    assert normalize_line_endings(text) == expected
+
+
+@pytest.mark.parametrize("orig", ["foo", "åäö"])
+def test_base64(orig):
+    assert base64decode(base64encode(orig)) == orig
