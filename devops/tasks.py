@@ -457,6 +457,7 @@ def base64_decode_secrets(content: str) -> str:
     for key, value in data.items():
         if value is not None:
             value = base64decode(value)
+            value = normalize_line_endings(value)
             if "\n" in value:
                 # If there's a line break in the value we want to dump it using
                 # the literal syntax. This will use the pipe symbol (|) to
@@ -483,6 +484,7 @@ def base64_encode_secrets(content: str) -> str:
     data = secrets["data"]
     for key, value in data.items():
         if value is not None:
+            value = normalize_line_endings(value)
             value = base64encode(value)
             data[key] = PlainScalarString(value)
 
