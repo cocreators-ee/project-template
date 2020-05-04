@@ -80,6 +80,7 @@ data:
     Tabw4C6DPpfMA3XlhJkhAkEAoIcAcIwMxj2i46WdlSL8zt/5EAgeF0jdCLJPU6J5
     xrbc46CIEyiNKpyhIdDOcZqsUevytVTyOxSnnsOYBdW5LA==
     -----END RSA PRIVATE KEY-----
+  some_missing_value:
 kind: Secret
 metadata:
   name: test-secrets
@@ -107,6 +108,7 @@ data:
     Tabw4C6DPpfMA3XlhJkhAkEAoIcAcIwMxj2i46WdlSL8zt/5EAgeF0jdCLJPU6J5
     xrbc46CIEyiNKpyhIdDOcZqsUevytVTyOxSnnsOYBdW5LA==
     -----END RSA PRIVATE KEY-----
+  some_missing_value:
 kind: Secret
 metadata:
   annotations:
