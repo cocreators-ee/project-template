@@ -431,12 +431,18 @@ def _revert_unchanged_secrets(
     orig_content = yaml.safe_load(orig_content)
     sealed_orig_content = yaml.safe_load(sealed_orig_content)
 
-    for key, new_b64 in new_content["data"].items():
+    for key, new in new_content["data"].items():
         if key in orig_content["data"]:
-            orig_b64 = orig_content["data"][key]
-            new = base64decode(new_b64)
-            orig = base64decode(orig_b64)
-            if normalize_line_endings(orig) == normalize_line_endings(new):
+            orig = orig_content["data"][key]
+            if new is not None:
+                new = base64decode(new)
+                new = normalize_line_endings(new)
+
+            if orig is not None:
+                orig = base64decode(orig)
+                orig = normalize_line_endings(orig)
+
+            if new == orig:
                 orig_sealed_value = sealed_orig_content["spec"]["encryptedData"][key]
                 new_sealed_content["spec"]["encryptedData"][key] = orig_sealed_value
 
