@@ -391,7 +391,7 @@ def seal_secrets(env: str, only_changed=False) -> None:
         content = base64_encode_secrets(content)
         sealed_content = kube_seal(content, cert=secrets_pem)
 
-        if only_changed:
+        if only_changed and output_file.exists():
             master_key = get_master_key(env=env)
             sealed_original_content = output_file.read_text(encoding="utf-8")
             original_content = kube_unseal(
