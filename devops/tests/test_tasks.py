@@ -280,6 +280,13 @@ def test_seal_unseal_secrets(clean_test_settings, decoded_secrets):
     resealed_content = TEST_ENV_SEALED_SECRETS_PATH.read_text(encoding="utf-8")
     assert original_sealed_content != resealed_content
 
+    # Check only_changed mode also works with newly added unsealed file that has
+    # no corresponding sealed file from before
+    TEST_ENV_SEALED_SECRETS_PATH.unlink()
+    assert TEST_ENV_UNSEALED_SECRETS_PATH.exists()
+    seal_secrets(TEST_ENV, only_changed=True)
+    assert TEST_ENV_SEALED_SECRETS_PATH.exists()
+
     TEST_ENV_SEALED_SECRETS_PATH.unlink()
     TEST_ENV_UNSEALED_SECRETS_PATH.unlink()
 
