@@ -3,7 +3,7 @@
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![Travis-CI build status](https://travis-ci.org/Lieturd/project-template.svg?branch=master)](https://travis-ci.org/Lieturd/project-template)
 
-# Lieturd project template
+# Cocreators project template
 
 This project template is meant for use by anyone and everyone, it's aim
 is to promote good practices and make it easy to kick-start a project.
@@ -312,7 +312,7 @@ after the resources have been restarted.
 In practice when e.g. writing database migrations for your Python API
 you might want that script to run something like:
 
- - [migrate-anything](https://github.com/Lieturd/migrate-anything)
+ - [migrate-anything](https://github.com/cocreators-ee/migrate-anything)
  - [yoyo-migrate](https://ollycope.com/software/yoyo/latest/)
  - [flyway](https://flywaydb.org)
  - [pymongo-migrate](https://github.com/stxnext/pymongo-migrate)
@@ -592,4 +592,11 @@ Things that could be done better still:
  - Azure DevOps: It would be nice to be able to set variables with a
    form, especially things like the tag for release
  - Releases: Examples of real functional database migrations using
-   [migrate-anything](https://github.com/Lieturd/migrate-anything)
+   [migrate-anything](https://github.com/cocreators-ee/migrate-anything)
+
+
+# Financial support
+
+This project has been made possible thanks to [Cocreators](https://cocreators.ee) and [Lietu](https://lietu.net). You can help us continue our open source work by supporting us on [Buy me a coffee](https://www.buymeacoffee.com/cocreators).
+
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/cocreators)
